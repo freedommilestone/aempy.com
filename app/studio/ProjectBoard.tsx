@@ -114,9 +114,10 @@ export function ProjectBoard({ id }: { id: string }) {
     );
   }
 
-  const currentIndex = stageIndex(project.currentStage);
-  const prompt = promptFor(project, view);
-  const recommendations = recsFor(project, view);
+  const active: Project = project;
+  const currentIndex = stageIndex(active.currentStage);
+  const prompt = promptFor(active, view);
+  const recommendations = recsFor(active, view);
 
   function persist(next: Project) {
     upsertProject(next);
@@ -126,51 +127,51 @@ export function ProjectBoard({ id }: { id: string }) {
   function apply(recommendation: string) {
     if (view === "idea") {
       persist({
-        ...project,
+        ...active,
         idea: {
-          ...project.idea,
-          prompt: applyRecommendation(project.idea.prompt, recommendation),
+          ...active.idea,
+          prompt: applyRecommendation(active.idea.prompt, recommendation),
         },
       });
       return;
     }
     if (view === "script") {
       persist({
-        ...project,
+        ...active,
         script: {
-          ...project.script,
-          prompt: applyRecommendation(project.script.prompt, recommendation),
+          ...active.script,
+          prompt: applyRecommendation(active.script.prompt, recommendation),
         },
       });
       return;
     }
     if (view === "titles") {
       persist({
-        ...project,
+        ...active,
         titles: {
-          ...project.titles,
-          prompt: applyRecommendation(project.titles.prompt, recommendation),
+          ...active.titles,
+          prompt: applyRecommendation(active.titles.prompt, recommendation),
         },
       });
       return;
     }
     if (view === "thumbnail") {
       persist({
-        ...project,
+        ...active,
         thumbnail: {
-          ...project.thumbnail,
-          prompt: applyRecommendation(project.thumbnail.prompt, recommendation),
+          ...active.thumbnail,
+          prompt: applyRecommendation(active.thumbnail.prompt, recommendation),
         },
       });
       return;
     }
     if (view === "description") {
       persist({
-        ...project,
+        ...active,
         description: {
-          ...project.description,
+          ...active.description,
           prompt: applyRecommendation(
-            project.description.prompt,
+            active.description.prompt,
             recommendation,
           ),
         },
@@ -179,31 +180,31 @@ export function ProjectBoard({ id }: { id: string }) {
     }
     if (view === "publish") {
       persist({
-        ...project,
+        ...active,
         publish: {
-          ...project.publish,
-          prompt: applyRecommendation(project.publish.prompt, recommendation),
+          ...active.publish,
+          prompt: applyRecommendation(active.publish.prompt, recommendation),
         },
       });
       return;
     }
     if (view === "voiceover") {
       persist({
-        ...project,
+        ...active,
         voiceOver: {
-          ...project.voiceOver,
-          prompt: applyRecommendation(project.voiceOver.prompt, recommendation),
+          ...active.voiceOver,
+          prompt: applyRecommendation(active.voiceOver.prompt, recommendation),
         },
       });
       return;
     }
     if (view === "sound") {
       persist({
-        ...project,
+        ...active,
         soundDesign: {
-          ...project.soundDesign,
+          ...active.soundDesign,
           prompt: applyRecommendation(
-            project.soundDesign.prompt,
+            active.soundDesign.prompt,
             recommendation,
           ),
         },
@@ -212,17 +213,17 @@ export function ProjectBoard({ id }: { id: string }) {
     }
     if (view === "music") {
       persist({
-        ...project,
+        ...active,
         music: {
-          ...project.music,
-          prompt: applyRecommendation(project.music.prompt, recommendation),
+          ...active.music,
+          prompt: applyRecommendation(active.music.prompt, recommendation),
         },
       });
       return;
     }
     persist({
-      ...project,
-      scenes: project.scenes.map((scene) => {
+      ...active,
+      scenes: active.scenes.map((scene) => {
         if (view === "storyboard") {
           return {
             ...scene,
@@ -247,21 +248,21 @@ export function ProjectBoard({ id }: { id: string }) {
   }
 
   function regenerate() {
-    const rebuilt = buildProject(draft || project.idea.raw);
+    const rebuilt = buildProject(draft || active.idea.raw);
     persist({
       ...rebuilt,
-      id: project.id,
-      createdAt: project.createdAt,
-      currentStage: project.currentStage,
+      id: active.id,
+      createdAt: active.createdAt,
+      currentStage: active.currentStage,
     });
   }
 
   function toggleCheck(id: string) {
     persist({
-      ...project,
+      ...active,
       publish: {
-        ...project.publish,
-        checks: project.publish.checks.map((check) =>
+        ...active.publish,
+        checks: active.publish.checks.map((check) =>
           check.id === id ? { ...check, done: !check.done } : check,
         ),
       },
@@ -269,9 +270,9 @@ export function ProjectBoard({ id }: { id: string }) {
   }
 
   function continueNext() {
-    const upcoming = nextStage(project.currentStage);
+    const upcoming = nextStage(active.currentStage);
     if (!upcoming) return;
-    persist({ ...project, currentStage: upcoming });
+    persist({ ...active, currentStage: upcoming });
     setView(upcoming);
   }
 
