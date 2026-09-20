@@ -4,7 +4,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "aempy — Create the next iconic YouTube story",
   description:
-    "aempy helps YouTube creators write the next iconic story with professional prompts that generate scene images and video clips.",
+    "aempy helps YouTube creators track each video from idea to publish: titles, thumbnails, storyboards, scene images, clips, voice over, sound, music, and description.",
 };
 
 export default function RootLayout({

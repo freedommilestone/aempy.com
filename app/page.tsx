@@ -2,14 +2,14 @@ export default function Home() {
   return (
     <>
       <header className="site-header">
-        <a className="logo" href="#top">
+        <a className="logo" href="/">
           aempy
         </a>
         <nav aria-label="Primary">
           <a href="#how">How it works</a>
-          <a href="#for-creators">For creators</a>
-          <a className="nav-cta" href="#start">
-            Start a story
+          <a href="/studio">Studio</a>
+          <a className="nav-cta" href="/studio">
+            Open studio
           </a>
         </nav>
       </header>
@@ -20,12 +20,12 @@ export default function Home() {
           <h1>Create the next iconic story.</h1>
           <p className="lede">
             aempy helps people turn an idea into a cinematic YouTube narrative
-            — using professional prompts to generate the scene images and video
-            clips that carry the plot.
+            — using professional prompts to board the scenes, generate stills,
+            and cut the video clips that carry the plot.
           </p>
           <div className="hero-actions">
-            <a className="button primary" href="#start">
-              Start creating
+            <a className="button primary" href="/studio">
+              Open studio
             </a>
             <a className="button ghost" href="#how">
               See the workflow
@@ -35,17 +35,17 @@ export default function Home() {
 
         <section className="storyboard" aria-label="Example storyboard">
           <article className="frame">
-            <span className="frame-label">Scene 01 · Image</span>
+            <span className="frame-label">Panel 01</span>
             <strong>The cold open</strong>
             <p>A deserted diner at 3 a.m. Neon buzz. One empty booth.</p>
           </article>
           <article className="frame">
-            <span className="frame-label">Scene 02 · Clip</span>
+            <span className="frame-label">Panel 02</span>
             <strong>The turn</strong>
             <p>Door chime. A figure steps in. The camera holds too long.</p>
           </article>
           <article className="frame">
-            <span className="frame-label">Scene 03 · Image</span>
+            <span className="frame-label">Panel 03</span>
             <strong>The reveal</strong>
             <p>Close-up: a notebook titled “Episode 1.” Cut to black.</p>
           </article>
@@ -66,10 +66,31 @@ export default function Home() {
               </p>
             </li>
             <li>
+              <h3>Lock the title and thumbnail</h3>
+              <p>
+                Package the click before you finish the cut — working titles
+                and thumbnail frames that match the storyboard stills.
+              </p>
+            </li>
+            <li>
+              <h3>Record the voice over</h3>
+              <p>
+                Turn the script into a dry read — breaths, subtext, and timing
+                the picture can cut to.
+              </p>
+            </li>
+            <li>
+              <h3>Board the scenes</h3>
+              <p>
+                Each beat becomes a storyboard panel: camera, action, and
+                continuity — not a pile of generated stills.
+              </p>
+            </li>
+            <li>
               <h3>Generate scene images</h3>
               <p>
-                Each beat gets a directed still: lighting, framing, wardrobe,
-                and mood written as a professional image prompt.
+                After the board is locked, each panel becomes a directed still
+                — lighting, framing, and wardrobe matching the storyboard.
               </p>
             </li>
             <li>
@@ -77,6 +98,20 @@ export default function Home() {
               <p>
                 Turn key scenes into motion — short clips you can sequence into
                 the iconic story your audience remembers.
+              </p>
+            </li>
+            <li>
+              <h3>Design sound and music</h3>
+              <p>
+                Layer signature FX, room tone, and an underscore so the episode
+                feels finished — not silent picture.
+              </p>
+            </li>
+            <li>
+              <h3>Track the whole project</h3>
+              <p>
+                Keep the episode on one board through description, captions,
+                end screen, and publish — so you always know what is left.
               </p>
             </li>
           </ol>
@@ -102,8 +137,8 @@ export default function Home() {
             <li>
               <h3>A story, not a pile of assets</h3>
               <p>
-                Images and clips are generated as scenes in sequence, so the
-                episode holds together when you edit.
+                Storyboard panels and clips are built as scenes in sequence, so
+                the episode holds together when you edit.
               </p>
             </li>
           </ul>
@@ -112,11 +147,11 @@ export default function Home() {
         <section id="start" className="cta">
           <h2>Your next iconic story starts with a scene.</h2>
           <p>
-            Bring the idea. aempy writes the professional prompts and generates
-            the images and clips that put it on screen.
+            Open studio and track a video from idea to publish — title,
+            thumbnail, picture, sound, description, and the upload checklist.
           </p>
-          <a className="button primary" href="mailto:hello@aempy.com">
-            Get early access
+          <a className="button primary" href="/studio">
+            Go to studio
           </a>
         </section>
       </main>
