@@ -25,6 +25,31 @@ export type Scene = {
   videoPrompt: string;
 };
 
+export type StageVersion = {
+  id: string;
+  at: string;
+  prompt: string;
+  content: string;
+  scenes?: Scene[];
+  ideaRaw?: string;
+  ideaRefined?: string;
+};
+
+export type ChatMessage = {
+  id: string;
+  role: "user" | "assistant";
+  text: string;
+  stage: StageId;
+  at: string;
+};
+
+export type ProjectFiles = {
+  stills: Record<string, string>;
+  clips: Record<string, string>;
+  thumbs: Record<string, string>;
+  voiceOver?: string;
+};
+
 export type TrackedOutput = {
   content: string;
   prompt: string;
@@ -64,11 +89,15 @@ export type Project = {
   music: TrackedOutput;
   description: TrackedOutput;
   publish: PublishOutput;
+  chat: ChatMessage[];
+  history: Partial<Record<StageId, StageVersion[]>>;
+  notes: Partial<Record<StageId, string>>;
+  files: ProjectFiles;
 };
 
 const STORAGE_KEY = "aempy-projects";
 
-function migrateProject(project: Project): Project {
+export function migrateProject(project: Project): Project {
   const scenes = project.scenes.map((scene) => {
     const needsSplit =
       !scene.storyboardPrompt &&
@@ -132,10 +161,19 @@ function migrateProject(project: Project): Project {
     thumbnail: project.thumbnail ?? thumbnailFor(subject),
     description: project.description ?? descriptionFor(subject),
     publish: project.publish ?? publishFor(subject),
+    chat: project.chat ?? [],
+    history: project.history ?? {},
+    notes: project.notes ?? {},
+    files: {
+      stills: project.files?.stills ?? {},
+      clips: project.files?.clips ?? {},
+      thumbs: project.files?.thumbs ?? {},
+      voiceOver: project.files?.voiceOver,
+    },
   };
 }
 
-function uid() {
+export function uid() {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
@@ -416,6 +454,10 @@ export function buildProject(rawIdea: string): Project {
     thumbnail: thumbnailFor(subject),
     description: descriptionFor(subject),
     publish: publishFor(subject),
+    chat: [],
+    history: {},
+    notes: {},
+    files: { stills: {}, clips: {}, thumbs: {} },
   };
 }
 

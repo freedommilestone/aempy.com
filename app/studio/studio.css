@@ -431,10 +431,145 @@ button.button.danger {
   margin-top: 0.2rem;
 }
 
-.script-output {
+.script-output,
+.result-editor,
+.prompt-editor {
   white-space: pre-wrap;
   line-height: 1.55;
   margin: 0.85rem 0 0;
+  width: 100%;
+  font: inherit;
+  color: inherit;
+  background: rgba(12, 11, 9, 0.45);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0.75rem 0.85rem;
+}
+
+.result-editor {
+  min-height: 12rem;
+}
+
+.prompt-editor {
+  min-height: 10rem;
+}
+
+.notice {
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0.7rem 0.85rem;
+}
+
+.version-list ul {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.version-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: flex-start;
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.35;
+}
+
+.chat-log {
+  max-height: 16rem;
+  overflow: auto;
+  display: grid;
+  gap: 0.7rem;
+  margin: 0.75rem 0;
+}
+
+.chat-msg p {
+  margin: 0.3rem 0 0;
+  white-space: pre-wrap;
+  line-height: 1.45;
+}
+
+.chat-msg.is-assistant {
+  padding-left: 0.4rem;
+  border-left: 2px solid var(--accent);
+}
+
+.chat-form {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.chat-form textarea {
+  min-height: 5rem;
+  width: 100%;
+  font: inherit;
+  color: inherit;
+  background: rgba(12, 11, 9, 0.45);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0.7rem 0.8rem;
+}
+
+.file-slot {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.85rem;
+}
+
+.file-slot-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.file-preview {
+  width: 100%;
+  max-height: 12rem;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+.file-preview-media {
+  width: 100%;
+}
+
+.file-input {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.file-input input {
+  display: none;
+}
+
+.file-button {
+  display: inline-flex;
+  align-items: center;
+}
+
+.field-error {
+  color: var(--accent);
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.frame textarea,
+.scene-body textarea {
+  width: 100%;
+  min-height: 5.5rem;
+  margin-top: 0.6rem;
+  font: inherit;
+  color: inherit;
+  background: rgba(12, 11, 9, 0.45);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0.55rem 0.65rem;
 }
 
 @media (max-width: 860px) {

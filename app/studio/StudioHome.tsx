@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import { importProjectBackup } from "@/lib/backup";
 import {
   PROJECTS_CHANGED,
   SAMPLE_IDEA,
@@ -71,6 +72,25 @@ export function StudioHome() {
           >
             Start with a sample
           </button>
+          <label className="button ghost file-button">
+            Import backup
+            <input
+              type="file"
+              accept="application/json"
+              hidden
+              onChange={async (event) => {
+                const file = event.target.files?.[0];
+                event.target.value = "";
+                if (!file) return;
+                try {
+                  const projectId = await importProjectBackup(file);
+                  router.push(`/studio/${projectId}`);
+                } catch {
+                  window.alert("That file is not an aempy backup.");
+                }
+              }}
+            />
+          </label>
         </div>
       </form>
 
