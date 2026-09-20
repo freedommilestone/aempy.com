@@ -6,33 +6,30 @@ import { FileSlot } from "@/app/studio/FileSlot";
 import { downloadProjectBackup } from "@/lib/backup";
 import type { ChatResult } from "@/lib/chat";
 import {
-  STAGES,
-  buildProject,
-  loadProjects,
-  nextStage,
-  stageIndex,
-  upsertProject,
+  TRACK_KINDS,
+  addTrack,
+  addYoutubeSet,
+  moveTrack,
+  patchTrack,
+  removeTrack,
   type Project,
-  type StageId,
+  type TrackKind,
+  upsertProject,
+  loadProjects,
 } from "@/lib/projects";
 import {
+  addScene,
   appendChat,
   captureVersion,
-  recsFor,
-  remapFiles,
+  patchScene,
+  removeScene,
   restoreVersion,
-  stageContent,
-  stageLabel,
-  stagePrompt,
+  trackById,
   withPromptRefinement,
-  withSceneBeat,
-  withStageContent,
-  withStagePrompt,
 } from "@/lib/studioState";
 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
-
   return (
     <button
       className="button ghost"
@@ -48,10 +45,16 @@ function CopyButton({ text }: { text: string }) {
   );
 }
 
+function assignMap(map: Record<string, string>, key: string, nextId?: string) {
+  const next = { ...map };
+  if (nextId) next[key] = nextId;
+  else delete next[key];
+  return next;
+}
+
 export function ProjectBoard({ id }: { id: string }) {
   const [project, setProject] = useState<Project | null>(null);
-  const [view, setView] = useState<StageId>("idea");
-  const [draft, setDraft] = useState("");
+  const [addKind, setAddKind] = useState<TrackKind>("title");
   const [chatDraft, setChatDraft] = useState("");
   const [chatBusy, setChatBusy] = useState(false);
   const [notice, setNotice] = useState("");
@@ -60,8 +63,6 @@ export function ProjectBoard({ id }: { id: string }) {
   useEffect(() => {
     const found = loadProjects().find((item) => item.id === id) ?? null;
     setProject(found);
-    setView(found?.currentStage ?? "idea");
-    setDraft(found?.idea.raw ?? "");
     setReady(true);
   }, [id]);
 
@@ -85,76 +86,33 @@ export function ProjectBoard({ id }: { id: string }) {
   }
 
   const active: Project = project;
-  const currentIndex = stageIndex(active.currentStage);
-  const prompt = stagePrompt(active, view);
-  const recommendations = recsFor(active, view);
-  const versions = active.history[view] ?? [];
-  const output = stageContent(active, view);
+  const view = trackById(active, active.currentTrackId);
 
   function persist(next: Project) {
     upsertProject(next);
     setProject(next);
   }
 
-  function patchFiles(patch: (files: Project["files"]) => Project["files"]) {
-    persist({ ...active, files: patch(active.files) });
-  }
-
-  function assignMap(map: Record<string, string>, key: string, nextId?: string) {
-    const next = { ...map };
-    if (nextId) next[key] = nextId;
-    else delete next[key];
-    return next;
+  function selectTrack(trackId: string) {
+    persist({ ...active, currentTrackId: trackId });
   }
 
   function saveVersion() {
-    persist(captureVersion(active, view));
-    setNotice("Version saved for this stage.");
-  }
-
-  function regenerate() {
-    const rebuilt = buildProject(draft || active.idea.raw);
-    persist({
-      ...rebuilt,
-      id: active.id,
-      createdAt: active.createdAt,
-      currentStage: active.currentStage,
-      chat: active.chat,
-      history: active.history,
-      notes: active.notes,
-      files: remapFiles(active, rebuilt),
-    });
-  }
-
-  function toggleCheck(checkId: string) {
-    persist({
-      ...active,
-      publish: {
-        ...active.publish,
-        checks: active.publish.checks.map((check) =>
-          check.id === checkId ? { ...check, done: !check.done } : check,
-        ),
-      },
-    });
-  }
-
-  function continueNext() {
-    const upcoming = nextStage(active.currentStage);
-    if (!upcoming) return;
-    persist({ ...active, currentStage: upcoming });
-    setView(upcoming);
+    if (!view) return;
+    persist(captureVersion(active, view.id));
+    setNotice("Version saved for this track.");
   }
 
   async function sendChat(event: FormEvent) {
     event.preventDefault();
     const text = chatDraft.trim();
-    if (!text || chatBusy) return;
+    if (!text || chatBusy || !view) return;
     setChatBusy(true);
     setChatDraft("");
     const withUser = appendChat(active, {
       role: "user",
       text,
-      stage: view,
+      trackId: view.id,
     });
     persist(withUser);
     try {
@@ -162,12 +120,9 @@ export function ProjectBoard({ id }: { id: string }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          stage: view,
-          prompt: stagePrompt(withUser, view),
-          content:
-            view === "storyboard" || view === "images" || view === "videos"
-              ? (withUser.notes[view] ?? "")
-              : stageContent(withUser, view),
+          track: view.label,
+          prompt: view.prompt,
+          content: view.content,
           message: text,
           history: withUser.chat.slice(-8).map((item) => ({
             role: item.role,
@@ -176,22 +131,23 @@ export function ProjectBoard({ id }: { id: string }) {
         }),
       });
       const data = (await response.json()) as ChatResult;
-      let next = withStagePrompt(withUser, view, data.prompt);
-      next = withStageContent(next, view, data.content);
-      next = captureVersion(next, view);
+      let next = patchTrack(withUser, view.id, {
+        prompt: data.prompt,
+        content: data.content,
+      });
+      next = captureVersion(next, view.id);
       next = appendChat(next, {
         role: "assistant",
         text: data.reply,
-        stage: view,
+        trackId: view.id,
       });
       persist(next);
-      if (view === "idea") setDraft(next.idea.raw);
     } catch {
       persist(
         appendChat(withUser, {
           role: "assistant",
           text: "Could not reach chat. Your message is still logged.",
-          stage: view,
+          trackId: view.id,
         }),
       );
     } finally {
@@ -199,22 +155,8 @@ export function ProjectBoard({ id }: { id: string }) {
     }
   }
 
-  async function exportProject() {
-    await downloadProjectBackup(active);
-    setNotice(
-      "Backup downloaded. Put this file on Drive or another device, then import it from the studio home.",
-    );
-  }
-
-  const textStage =
-    view === "titles" ||
-    view === "script" ||
-    view === "voiceover" ||
-    view === "sound" ||
-    view === "music" ||
-    view === "description" ||
-    view === "publish" ||
-    view === "thumbnail";
+  const visual = view && ["storyboard", "images", "videos"].includes(view.kind);
+  const audio = view && ["voiceover", "sound", "music"].includes(view.kind);
 
   return (
     <div className="studio">
@@ -222,331 +164,444 @@ export function ProjectBoard({ id }: { id: string }) {
         <Link className="meta" href="/studio">
           ← New project
         </Link>
-        <button className="button ghost" type="button" onClick={exportProject}>
+        <button
+          className="button ghost"
+          type="button"
+          onClick={async () => {
+            await downloadProjectBackup(active);
+            setNotice(
+              "Backup downloaded. Import it from the studio home on another device.",
+            );
+          }}
+        >
           Download backup
         </button>
       </div>
-      <h1 className="board-title">{project.title}</h1>
+      <input
+        className="board-title-input"
+        value={active.title}
+        onChange={(event) => persist({ ...active, title: event.target.value })}
+        aria-label="Project title"
+      />
+      <label className="kicker" htmlFor="brief">
+        Brief
+      </label>
+      <textarea
+        id="brief"
+        className="brief-editor"
+        value={active.brief}
+        onChange={(event) => persist({ ...active, brief: event.target.value })}
+        placeholder="What is this video? Optional — used when you add a YouTube set or a new track."
+      />
       <p className="studio-lede">
-        Edit the result, save versions of prompt plus output, and use project
-        chat to write into the stage you have open. Upload stills, VO, and
-        thumbnails on those stages. Download a backup to move the project.
+        Add only the tracks this video needs. Chat, versions, and uploads stay
+        on the track you have open.
       </p>
       {notice ? <p className="notice">{notice}</p> : null}
 
-      <div className="stepper">
-        {STAGES.map((stage, index) => {
-          const done = index < currentIndex;
-          const current = stage.id === view;
-          return (
-            <button
-              key={stage.id}
-              className={`step${current ? " is-current" : ""}${done ? " is-done" : ""}`}
-              type="button"
-              onClick={() => setView(stage.id)}
-            >
-              {stage.number}
-              <strong>{stage.label}</strong>
-            </button>
-          );
-        })}
-      </div>
-
-      <div className="board">
-        <section className="panel">
-          <div className="kicker-row">
-            <p className="kicker">Output</p>
-            <button className="button ghost" type="button" onClick={saveVersion}>
-              Save version
+      <div className="track-bar">
+        {active.tracks.map((track, index) => (
+          <div
+            key={track.id}
+            className={`track-chip${track.id === view?.id ? " is-current" : ""}`}
+          >
+            <button type="button" onClick={() => selectTrack(track.id)}>
+              <span className="meta">{String(index + 1).padStart(2, "0")}</span>
+              <strong>{track.label}</strong>
             </button>
           </div>
+        ))}
+      </div>
 
-          {view === "idea" && (
-            <div className="output">
-              <label className="kicker" htmlFor="idea-result">
-                Episode concept
-              </label>
-              <textarea
-                id="idea-result"
-                className="result-editor"
-                value={active.idea.refined}
+      <div className="add-track">
+        <select
+          value={addKind}
+          onChange={(event) => setAddKind(event.target.value as TrackKind)}
+          aria-label="Track type"
+        >
+          {TRACK_KINDS.map((kind) => (
+            <option key={kind.id} value={kind.id}>
+              {kind.label}
+            </option>
+          ))}
+        </select>
+        <button
+          className="button primary"
+          type="button"
+          onClick={() => persist(addTrack(active, addKind))}
+        >
+          Add track
+        </button>
+        <button
+          className="button ghost"
+          type="button"
+          onClick={() => persist(addYoutubeSet(active))}
+        >
+          Add YouTube set
+        </button>
+      </div>
+
+      {active.tracks.length === 0 ? (
+        <p className="empty">
+          Nothing on this board yet. Add a title, a thumbnail, notes — whatever
+          you actually need — or drop in the full YouTube set.
+        </p>
+      ) : null}
+
+      {view ? (
+        <div className="board">
+          <section className="panel">
+            <div className="kicker-row">
+              <input
+                className="track-label-input"
+                value={view.label}
                 onChange={(event) =>
                   persist(
-                    withStageContent(active, "idea", event.target.value),
+                    patchTrack(active, view.id, { label: event.target.value }),
                   )
                 }
+                aria-label="Track name"
               />
-              <label className="kicker" htmlFor="refine">
-                Source idea
-              </label>
-              <div className="refine">
-                <textarea
-                  id="refine"
-                  value={draft}
-                  onChange={(event) => {
-                    setDraft(event.target.value);
-                    persist({
-                      ...active,
-                      idea: { ...active.idea, raw: event.target.value },
-                    });
+              <div className="row-actions">
+                <button
+                  className="button ghost"
+                  type="button"
+                  onClick={() => persist(moveTrack(active, view.id, -1))}
+                >
+                  Up
+                </button>
+                <button
+                  className="button ghost"
+                  type="button"
+                  onClick={() => persist(moveTrack(active, view.id, 1))}
+                >
+                  Down
+                </button>
+                <button className="button ghost" type="button" onClick={saveVersion}>
+                  Save version
+                </button>
+                <button
+                  className="button danger"
+                  type="button"
+                  onClick={() => persist(removeTrack(active, view.id))}
+                >
+                  Remove
+                </button>
+              </div>
+            </div>
+
+            {view.kind === "thumbnail" && (
+              <div className="scene-grid">
+                {["A", "B", "C"].map((letter) => (
+                  <article className="scene-card" key={letter}>
+                    <FileSlot
+                      label={`Thumb ${letter} · 1280×720`}
+                      accept="image/*"
+                      kind="image"
+                      assetId={view.thumbs[letter]}
+                      onAssigned={(nextId) =>
+                        persist(
+                          patchTrack(active, view.id, {
+                            thumbs: assignMap(view.thumbs, letter, nextId),
+                          }),
+                        )
+                      }
+                    />
+                  </article>
+                ))}
+              </div>
+            )}
+
+            {audio && (
+              <FileSlot
+                label="Audio file"
+                accept="audio/*"
+                kind="audio"
+                assetId={view.audioId}
+                onAssigned={(nextId) =>
+                  persist(patchTrack(active, view.id, { audioId: nextId }))
+                }
+              />
+            )}
+
+            {view.kind === "files" && (
+              <div className="scene-grid">
+                {view.files.map((assetId, index) => (
+                  <FileSlot
+                    key={assetId}
+                    label={`File ${index + 1}`}
+                    accept="*/*"
+                    kind="image"
+                    assetId={assetId}
+                    onAssigned={(nextId) =>
+                      persist(
+                        patchTrack(active, view.id, {
+                          files: nextId
+                            ? view.files.map((id) => (id === assetId ? nextId : id))
+                            : view.files.filter((id) => id !== assetId),
+                        }),
+                      )
+                    }
+                  />
+                ))}
+                <FileSlot
+                  label="Add file"
+                  accept="*/*"
+                  kind="image"
+                  onAssigned={(nextId) => {
+                    if (!nextId) return;
+                    persist(
+                      patchTrack(active, view.id, {
+                        files: [...view.files, nextId],
+                      }),
+                    );
                   }}
                 />
               </div>
-            </div>
-          )}
+            )}
 
-          {textStage && (
-            <div className="output">
-              {view === "thumbnail" && (
-                <div className="scene-grid">
-                  {["A", "B", "C"].map((letter) => (
-                    <article className="scene-card" key={letter}>
-                      <FileSlot
-                        label={`Thumb ${letter} · 1280×720`}
-                        accept="image/*"
-                        kind="image"
-                        assetId={active.files.thumbs[letter]}
-                        onAssigned={(nextId) =>
-                          patchFiles((files) => ({
-                            ...files,
-                            thumbs: assignMap(files.thumbs, letter, nextId),
-                          }))
-                        }
-                      />
-                    </article>
-                  ))}
-                </div>
-              )}
-              {view === "voiceover" && (
-                <FileSlot
-                  label="Voice over take"
-                  accept="audio/*"
-                  kind="audio"
-                  assetId={active.files.voiceOver}
-                  onAssigned={(nextId) =>
-                    patchFiles((files) => ({ ...files, voiceOver: nextId }))
-                  }
-                />
-              )}
-              <label className="kicker" htmlFor="stage-result">
-                Result
-              </label>
-              <textarea
-                id="stage-result"
-                className="result-editor"
-                value={output}
-                onChange={(event) =>
-                  persist(withStageContent(active, view, event.target.value))
-                }
-              />
-              {view === "publish" && (
-                <ul className="checklist">
-                  {active.publish.checks.map((check) => (
-                    <li key={check.id}>
-                      <label>
+            {visual && (
+              <div>
+                {view.kind === "storyboard" ? (
+                  <div className="storyboard-board" aria-label="Storyboard">
+                    {view.scenes.map((scene, index) => (
+                      <article className="frame" key={scene.id}>
+                        <span className="frame-label">
+                          Panel {String(index + 1).padStart(2, "0")}
+                          {scene.camera ? ` · ${scene.camera}` : ""}
+                        </span>
                         <input
-                          type="checkbox"
-                          checked={check.done}
-                          onChange={() => toggleCheck(check.id)}
+                          value={scene.title}
+                          onChange={(event) =>
+                            persist(
+                              patchScene(active, view.id, scene.id, {
+                                title: event.target.value,
+                              }),
+                            )
+                          }
                         />
-                        <span>{check.label}</span>
-                      </label>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          )}
-
-          {(view === "storyboard" ||
-            view === "images" ||
-            view === "videos") && (
-            <div>
-              {view === "storyboard" ? (
-                <div className="storyboard-board" aria-label="Storyboard">
-                  {active.scenes.map((scene, index) => (
-                    <article className="frame" key={scene.id}>
-                      <span className="frame-label">
-                        Panel {String(index + 1).padStart(2, "0")}
-                        {scene.camera ? ` · ${scene.camera}` : ""}
-                      </span>
-                      <strong>{scene.title}</strong>
-                      <textarea
-                        value={scene.beat}
-                        onChange={(event) =>
-                          persist(
-                            withSceneBeat(active, scene.id, event.target.value),
-                          )
-                        }
-                      />
-                    </article>
-                  ))}
-                </div>
-              ) : (
-                <div className="scene-grid">
-                  {active.scenes.map((scene, index) => (
-                    <article className="scene-card" key={scene.id}>
-                      <FileSlot
-                        label={`${view === "images" ? "Still" : "Clip"} ${String(index + 1).padStart(2, "0")} · ${scene.title}`}
-                        accept={view === "images" ? "image/*" : "video/*"}
-                        kind={view === "images" ? "image" : "video"}
-                        assetId={
-                          view === "images"
-                            ? active.files.stills[scene.id]
-                            : active.files.clips[scene.id]
-                        }
-                        onAssigned={(nextId) =>
-                          patchFiles((files) => ({
-                            ...files,
-                            stills:
-                              view === "images"
-                                ? assignMap(files.stills, scene.id, nextId)
-                                : files.stills,
-                            clips:
-                              view === "videos"
-                                ? assignMap(files.clips, scene.id, nextId)
-                                : files.clips,
-                          }))
-                        }
-                      />
-                      <div className="scene-body">
                         <textarea
                           value={scene.beat}
                           onChange={(event) =>
                             persist(
-                              withSceneBeat(
-                                active,
-                                scene.id,
-                                event.target.value,
-                              ),
+                              patchScene(active, view.id, scene.id, {
+                                beat: event.target.value,
+                              }),
                             )
                           }
                         />
-                      </div>
-                    </article>
-                  ))}
-                </div>
-              )}
-              <label className="kicker" htmlFor="scene-notes">
-                Stage notes
-              </label>
-              <textarea
-                id="scene-notes"
-                className="result-editor"
-                value={active.notes[view] ?? ""}
-                onChange={(event) =>
-                  persist({
-                    ...active,
-                    notes: { ...active.notes, [view]: event.target.value },
-                  })
-                }
-              />
-            </div>
-          )}
-
-          {versions.length > 0 && (
-            <div className="version-list">
-              <p className="kicker">Versions</p>
-              <ul>
-                {versions.map((version) => (
-                  <li key={version.id}>
-                    <span>
-                      {new Date(version.at).toLocaleString()} ·{" "}
-                      {version.content.slice(0, 72) || "Empty result"}
-                    </span>
-                    <button
-                      className="button ghost"
-                      type="button"
-                      onClick={() => {
-                        persist(restoreVersion(active, view, version.id));
-                        setNotice("Restored that version onto the board.");
-                      }}
-                    >
-                      Restore
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          <div className="board-actions">
-            <button className="button ghost" type="button" onClick={regenerate}>
-              Regenerate from idea
-            </button>
-            {nextStage(project.currentStage) && view === project.currentStage && (
-              <button className="button primary" type="button" onClick={continueNext}>
-                Continue to {STAGES[currentIndex + 1]?.label}
-              </button>
-            )}
-          </div>
-        </section>
-
-        <aside className="panel">
-          <div className="kicker-row">
-            <h3>Prompt used</h3>
-            <CopyButton text={prompt} />
-          </div>
-          <textarea
-            className="prompt-editor"
-            value={prompt}
-            onChange={(event) =>
-              persist(withStagePrompt(active, view, event.target.value))
-            }
-          />
-
-          <h3 style={{ marginTop: "1.4rem" }}>Recommendations</h3>
-          <ul className="recs">
-            {recommendations.map((item) => (
-              <li key={item}>
-                {item}
+                        <button
+                          className="button ghost"
+                          type="button"
+                          onClick={() =>
+                            persist(removeScene(active, view.id, scene.id))
+                          }
+                        >
+                          Remove beat
+                        </button>
+                      </article>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="scene-grid">
+                    {view.scenes.map((scene, index) => (
+                      <article className="scene-card" key={scene.id}>
+                        <FileSlot
+                          label={`${view.kind === "images" ? "Still" : "Clip"} ${String(index + 1).padStart(2, "0")}`}
+                          accept={view.kind === "images" ? "image/*" : "video/*"}
+                          kind={view.kind === "images" ? "image" : "video"}
+                          assetId={scene.fileId}
+                          onAssigned={(nextId) =>
+                            persist(
+                              patchScene(active, view.id, scene.id, {
+                                fileId: nextId,
+                              }),
+                            )
+                          }
+                        />
+                        <div className="scene-body">
+                          <input
+                            value={scene.title}
+                            onChange={(event) =>
+                              persist(
+                                patchScene(active, view.id, scene.id, {
+                                  title: event.target.value,
+                                }),
+                              )
+                            }
+                          />
+                          <textarea
+                            value={scene.beat}
+                            onChange={(event) =>
+                              persist(
+                                patchScene(active, view.id, scene.id, {
+                                  beat: event.target.value,
+                                }),
+                              )
+                            }
+                          />
+                          <button
+                            className="button ghost"
+                            type="button"
+                            onClick={() =>
+                              persist(removeScene(active, view.id, scene.id))
+                            }
+                          >
+                            Remove beat
+                          </button>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                )}
                 <button
                   className="button ghost"
                   type="button"
-                  onClick={() =>
-                    persist(withPromptRefinement(active, view, item))
-                  }
+                  onClick={() => persist(addScene(active, view.id))}
                 >
-                  Apply to prompt
+                  Add beat
                 </button>
-              </li>
-            ))}
-          </ul>
-
-          <h3 style={{ marginTop: "1.4rem" }}>Project chat</h3>
-          <p className="meta">
-            Writes into {stageLabel(view)}. Conversation stays on this project.
-          </p>
-          <div className="chat-log">
-            {active.chat.length === 0 ? (
-              <p className="empty">No messages yet.</p>
-            ) : (
-              active.chat.map((message) => (
-                <article
-                  className={`chat-msg is-${message.role}`}
-                  key={message.id}
-                >
-                  <span className="kicker">
-                    {message.role === "user" ? "You" : "Studio"} ·{" "}
-                    {stageLabel(message.stage)}
-                  </span>
-                  <p>{message.text}</p>
-                </article>
-              ))
+              </div>
             )}
-          </div>
-          <form className="chat-form" onSubmit={sendChat}>
+
+            <label className="kicker" htmlFor="track-result">
+              Result
+            </label>
             <textarea
-              value={chatDraft}
-              onChange={(event) => setChatDraft(event.target.value)}
-              placeholder="Tighten the hook, change the VO tone, ask for a new title pack…"
+              id="track-result"
+              className="result-editor"
+              value={view.content}
+              onChange={(event) =>
+                persist(
+                  patchTrack(active, view.id, { content: event.target.value }),
+                )
+              }
             />
-            <button className="button primary" type="submit" disabled={chatBusy}>
-              {chatBusy ? "Writing…" : "Send to stage"}
-            </button>
-          </form>
-        </aside>
-      </div>
+
+            {view.kind === "publish" && (
+              <ul className="checklist">
+                {view.checks.map((check) => (
+                  <li key={check.id}>
+                    <label>
+                      <input
+                        type="checkbox"
+                        checked={check.done}
+                        onChange={() =>
+                          persist(
+                            patchTrack(active, view.id, {
+                              checks: view.checks.map((item) =>
+                                item.id === check.id
+                                  ? { ...item, done: !item.done }
+                                  : item,
+                              ),
+                            }),
+                          )
+                        }
+                      />
+                      <span>{check.label}</span>
+                    </label>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            {view.history.length > 0 && (
+              <div className="version-list">
+                <p className="kicker">Versions</p>
+                <ul>
+                  {view.history.map((version) => (
+                    <li key={version.id}>
+                      <span>
+                        {new Date(version.at).toLocaleString()} ·{" "}
+                        {version.content.slice(0, 72) || "Empty result"}
+                      </span>
+                      <button
+                        className="button ghost"
+                        type="button"
+                        onClick={() => {
+                          persist(restoreVersion(active, view.id, version.id));
+                          setNotice("Restored that version.");
+                        }}
+                      >
+                        Restore
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </section>
+
+          <aside className="panel">
+            <div className="kicker-row">
+              <h3>Prompt</h3>
+              <CopyButton text={view.prompt} />
+            </div>
+            <textarea
+              className="prompt-editor"
+              value={view.prompt}
+              onChange={(event) =>
+                persist(
+                  patchTrack(active, view.id, { prompt: event.target.value }),
+                )
+              }
+            />
+
+            {view.recommendations.length > 0 && (
+              <>
+                <h3 style={{ marginTop: "1.4rem" }}>Recommendations</h3>
+                <ul className="recs">
+                  {view.recommendations.map((item) => (
+                    <li key={item}>
+                      {item}
+                      <button
+                        className="button ghost"
+                        type="button"
+                        onClick={() =>
+                          persist(withPromptRefinement(active, view.id, item))
+                        }
+                      >
+                        Apply to prompt
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+
+            <h3 style={{ marginTop: "1.4rem" }}>Project chat</h3>
+            <p className="meta">Writes into {view.label}.</p>
+            <div className="chat-log">
+              {active.chat.length === 0 ? (
+                <p className="empty">No messages yet.</p>
+              ) : (
+                active.chat.map((message) => (
+                  <article
+                    className={`chat-msg is-${message.role}`}
+                    key={message.id}
+                  >
+                    <span className="kicker">
+                      {message.role === "user" ? "You" : "Studio"} ·{" "}
+                      {trackById(active, message.trackId)?.label ?? "Track"}
+                    </span>
+                    <p>{message.text}</p>
+                  </article>
+                ))
+              )}
+            </div>
+            <form className="chat-form" onSubmit={sendChat}>
+              <textarea
+                value={chatDraft}
+                onChange={(event) => setChatDraft(event.target.value)}
+                placeholder="Ask for a tighter hook, a new title pack, a VO tone…"
+              />
+              <button className="button primary" type="submit" disabled={chatBusy}>
+                {chatBusy ? "Writing…" : "Send to track"}
+              </button>
+            </form>
+          </aside>
+        </div>
+      ) : null}
     </div>
   );
 }

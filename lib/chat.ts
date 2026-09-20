@@ -1,5 +1,4 @@
 import { applyRecommendation } from "@/lib/projects";
-import type { StageId } from "@/lib/projects";
 
 export type ChatTurn = {
   role: "user" | "assistant";
@@ -14,7 +13,7 @@ export type ChatResult = {
 };
 
 export function localChatResult(
-  stage: StageId,
+  trackLabel: string,
   prompt: string,
   content: string,
   message: string,
@@ -22,13 +21,13 @@ export function localChatResult(
   const nextPrompt = applyRecommendation(prompt, message);
   const stamp = message.trim();
   const nextContent = content.trim()
-    ? `${content.trim()}\n\nDIRECTOR NOTE (${stage}): ${stamp}`
+    ? `${content.trim()}\n\nDIRECTOR NOTE (${trackLabel}): ${stamp}`
     : stamp;
   return {
     source: "local",
     prompt: nextPrompt,
     content: nextContent,
-    reply: `Written onto the ${stage} stage. Your note is saved in the result and added to the prompt as a refinement. Save a version if you want this pass locked in history.`,
+    reply: `Written onto ${trackLabel}. Your note is in the result and added to the prompt as a refinement.`,
   };
 }
 

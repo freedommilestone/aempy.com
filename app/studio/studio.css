@@ -242,39 +242,77 @@ button.button.danger {
   padding: 1.5rem 0;
 }
 
-.stepper {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+.track-bar {
+  display: flex;
+  flex-wrap: wrap;
   gap: 0.5rem;
-  margin: 1.5rem 0 2rem;
+  margin: 1.25rem 0 0.75rem;
 }
 
-.step {
+.track-chip button {
   appearance: none;
   background: var(--bg-elevated);
   color: var(--muted);
   border: 1px solid var(--line);
   border-radius: 12px;
-  padding: 0.7rem 0.75rem;
+  padding: 0.65rem 0.8rem;
   text-align: left;
   cursor: pointer;
   font: inherit;
 }
 
-.step strong {
-  display: block;
-  color: var(--ink);
-  font-size: 0.82rem;
-  margin-top: 0.15rem;
-}
-
-.step.is-current {
+.track-chip.is-current button {
   border-color: var(--accent);
   color: var(--ink);
 }
 
-.step.is-done strong {
+.track-chip strong {
+  display: block;
   color: var(--ink);
+  font-size: 0.88rem;
+}
+
+.add-track {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  align-items: center;
+  margin-bottom: 1.25rem;
+}
+
+.add-track select,
+.board-title-input,
+.track-label-input,
+.brief-editor,
+.frame input,
+.scene-body input {
+  font: inherit;
+  color: inherit;
+  background: rgba(12, 11, 9, 0.45);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0.55rem 0.7rem;
+}
+
+.board-title-input {
+  width: 100%;
+  font-family: "Iowan Old Style", Palatino, Georgia, serif;
+  font-size: 2rem;
+  margin: 0.4rem 0 0.8rem;
+  background: transparent;
+  border: 0;
+  padding: 0;
+}
+
+.track-label-input {
+  font-size: 1.1rem;
+  min-width: 8rem;
+}
+
+.brief-editor {
+  width: 100%;
+  min-height: 4.5rem;
+  margin: 0.35rem 0 0.8rem;
 }
 
 .board {
@@ -573,7 +611,6 @@ button.button.danger {
 }
 
 @media (max-width: 860px) {
-  .stepper,
   .board,
   .storyboard-board {
     grid-template-columns: 1fr;

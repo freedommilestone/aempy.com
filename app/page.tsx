@@ -147,8 +147,8 @@ export default function Home() {
         <section id="start" className="cta">
           <h2>Your next iconic story starts with a scene.</h2>
           <p>
-            Open studio and track a video from idea to publish — title,
-            thumbnail, picture, sound, description, and the upload checklist.
+            Open studio and add only what this video needs — a title, a
+            thumbnail, a board, or the full YouTube set if you want it.
           </p>
           <a className="button primary" href="/studio">
             Go to studio

@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server";
 import { localChatResult, parseModelPayload, type ChatTurn } from "@/lib/chat";
-import type { StageId } from "@/lib/projects";
 
 type Body = {
-  stage?: StageId;
+  track?: string;
   prompt?: string;
   content?: string;
   message?: string;
@@ -12,17 +11,14 @@ type Body = {
 
 export async function POST(request: Request) {
   const body = (await request.json()) as Body;
-  const stage = body.stage ?? "idea";
+  const track = body.track ?? "track";
   const prompt = body.prompt ?? "";
   const content = body.content ?? "";
   const message = body.message?.trim() ?? "";
-  const fallback = localChatResult(stage, prompt, content, message);
+  const fallback = localChatResult(track, prompt, content, message);
 
   if (!message) {
-    return NextResponse.json(
-      { error: "Message required" },
-      { status: 400 },
-    );
+    return NextResponse.json({ error: "Message required" }, { status: 400 });
   }
 
   const key = process.env.OPENAI_API_KEY;
@@ -44,7 +40,7 @@ export async function POST(request: Request) {
           {
             role: "system",
             content:
-              'You help a YouTube creator on one workflow stage. Reply with JSON only: {"reply": string, "prompt": string, "content": string}. prompt is the full updated production prompt. content is the full updated stage result. reply is a short note of what you changed.',
+              'You help a YouTube creator on one project track. Reply with JSON only: {"reply": string, "prompt": string, "content": string}. prompt is the full updated production prompt. content is the full updated result. reply is a short note of what you changed.',
           },
           ...(body.history ?? []).slice(-8).map((turn) => ({
             role: turn.role,
@@ -52,7 +48,7 @@ export async function POST(request: Request) {
           })),
           {
             role: "user",
-            content: `Stage: ${stage}\n\nCurrent prompt:\n${prompt}\n\nCurrent result:\n${content}\n\nInstruction:\n${message}`,
+            content: `Track: ${track}\n\nCurrent prompt:\n${prompt}\n\nCurrent result:\n${content}\n\nInstruction:\n${message}`,
           },
         ],
       }),

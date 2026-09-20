@@ -1,359 +1,126 @@
-export const STAGES = [
-  { id: "idea", label: "Idea", number: "01" },
-  { id: "titles", label: "Title", number: "02" },
-  { id: "script", label: "Script", number: "03" },
-  { id: "voiceover", label: "Voice over", number: "04" },
-  { id: "storyboard", label: "Storyboard", number: "05" },
-  { id: "images", label: "Scene images", number: "06" },
-  { id: "thumbnail", label: "Thumbnail", number: "07" },
-  { id: "videos", label: "Scene videos", number: "08" },
-  { id: "sound", label: "Sound design", number: "09" },
-  { id: "music", label: "Music", number: "10" },
-  { id: "description", label: "Description", number: "11" },
-  { id: "publish", label: "Publish", number: "12" },
+export const TRACK_KINDS = [
+  { id: "notes", label: "Notes" },
+  { id: "idea", label: "Idea" },
+  { id: "title", label: "Title" },
+  { id: "script", label: "Script" },
+  { id: "voiceover", label: "Voice over" },
+  { id: "storyboard", label: "Storyboard" },
+  { id: "images", label: "Stills" },
+  { id: "thumbnail", label: "Thumbnail" },
+  { id: "videos", label: "Clips" },
+  { id: "sound", label: "Sound" },
+  { id: "music", label: "Music" },
+  { id: "description", label: "Description" },
+  { id: "publish", label: "Publish" },
+  { id: "files", label: "Files" },
 ] as const;
 
-export type StageId = (typeof STAGES)[number]["id"];
+export type TrackKind = (typeof TRACK_KINDS)[number]["id"];
+
+export const YOUTUBE_SET: TrackKind[] = [
+  "idea",
+  "title",
+  "script",
+  "voiceover",
+  "storyboard",
+  "images",
+  "thumbnail",
+  "videos",
+  "sound",
+  "music",
+  "description",
+  "publish",
+];
 
 export type Scene = {
   id: string;
   title: string;
   beat: string;
   camera?: string;
-  storyboardPrompt: string;
-  imagePrompt: string;
-  videoPrompt: string;
+  prompt: string;
+  fileId?: string;
 };
 
-export type StageVersion = {
+export type TrackCheck = {
+  id: string;
+  label: string;
+  done: boolean;
+};
+
+export type TrackVersion = {
   id: string;
   at: string;
   prompt: string;
   content: string;
   scenes?: Scene[];
-  ideaRaw?: string;
-  ideaRefined?: string;
+};
+
+export type Track = {
+  id: string;
+  kind: TrackKind;
+  label: string;
+  prompt: string;
+  content: string;
+  recommendations: string[];
+  scenes: Scene[];
+  checks: TrackCheck[];
+  files: string[];
+  thumbs: Record<string, string>;
+  audioId?: string;
+  history: TrackVersion[];
 };
 
 export type ChatMessage = {
   id: string;
   role: "user" | "assistant";
   text: string;
-  stage: StageId;
+  trackId: string;
   at: string;
-};
-
-export type ProjectFiles = {
-  stills: Record<string, string>;
-  clips: Record<string, string>;
-  thumbs: Record<string, string>;
-  voiceOver?: string;
-};
-
-export type TrackedOutput = {
-  content: string;
-  prompt: string;
-  recommendations: string[];
-};
-
-export type PublishCheck = {
-  id: string;
-  label: string;
-  done: boolean;
-};
-
-export type PublishOutput = TrackedOutput & {
-  checks: PublishCheck[];
 };
 
 export type Project = {
   id: string;
   title: string;
   createdAt: string;
-  currentStage: StageId;
-  idea: {
-    raw: string;
-    refined: string;
-    prompt: string;
-    recommendations: string[];
-  };
-  titles: TrackedOutput;
-  script: TrackedOutput;
-  voiceOver: TrackedOutput;
-  scenes: Scene[];
-  storyboardRecommendations: string[];
-  imageRecommendations: string[];
-  videoRecommendations: string[];
-  thumbnail: TrackedOutput;
-  soundDesign: TrackedOutput;
-  music: TrackedOutput;
-  description: TrackedOutput;
-  publish: PublishOutput;
+  brief: string;
+  currentTrackId: string | null;
+  tracks: Track[];
   chat: ChatMessage[];
-  history: Partial<Record<StageId, StageVersion[]>>;
-  notes: Partial<Record<StageId, string>>;
-  files: ProjectFiles;
 };
 
 const STORAGE_KEY = "aempy-projects";
-
-export function migrateProject(project: Project): Project {
-  const scenes = project.scenes.map((scene) => {
-    const needsSplit =
-      !scene.storyboardPrompt &&
-      Boolean(scene.imagePrompt?.startsWith("Storyboard panel"));
-    const storyboardPrompt =
-      scene.storyboardPrompt ||
-      (needsSplit
-        ? scene.imagePrompt
-        : `Storyboard panel. Shot: ${scene.title}. Camera: ${scene.camera ?? "16:9"}. Action: ${scene.beat}`);
-    const imagePrompt = needsSplit
-      ? `Photoreal cinematic still, 16:9, matching the storyboard. Shot: ${scene.title}. Camera: ${scene.camera ?? "16:9"}. Action: ${scene.beat} No text, no watermark.`
-      : scene.imagePrompt;
-    return {
-      ...scene,
-      storyboardPrompt,
-      imagePrompt,
-    };
-  });
-
-  const known = STAGES.some((stage) => stage.id === project.currentStage);
-  const currentStage: StageId = known
-    ? project.currentStage === "images" && !project.storyboardRecommendations
-      ? "storyboard"
-      : project.currentStage
-    : "idea";
-  const subject = project.idea?.raw || project.title;
-
-  const defaultStoryboardRecs = [
-    "Keep all four panels the same aspect ratio and character design so the board reads as one episode.",
-    "If a panel is unclear, rewrite the action in one sentence: who does what, in which direction.",
-    "Match the closer's camera to the cold open so the storyboard loops.",
-  ];
-  const defaultImageRecs = [
-    "Match each still to its storyboard panel — same camera, wardrobe, and location.",
-    "Keep faces readable at mobile size — YouTube is watched in a small frame.",
-    "If a still feels generic, add one specific prop from the script and regenerate only that scene.",
-  ];
-
-  const storyboardRecommendations =
-    project.storyboardRecommendations ??
-    (project.imageRecommendations?.some((item) => /panel/i.test(item))
-      ? project.imageRecommendations
-      : defaultStoryboardRecs);
-  const imageLooksLikeBoard = project.imageRecommendations?.some(
-    (item) => /panel/i.test(item) && !/still to its storyboard/i.test(item),
-  );
-  const imageRecommendations = imageLooksLikeBoard
-    ? defaultImageRecs
-    : (project.imageRecommendations ?? defaultImageRecs);
-
-  return {
-    ...project,
-    currentStage,
-    scenes,
-    storyboardRecommendations,
-    imageRecommendations,
-    voiceOver: project.voiceOver ?? voiceOverFor(subject),
-    soundDesign: project.soundDesign ?? soundDesignFor(subject),
-    music: project.music ?? musicFor(subject),
-    titles: project.titles ?? titlesFor(subject),
-    thumbnail: project.thumbnail ?? thumbnailFor(subject),
-    description: project.description ?? descriptionFor(subject),
-    publish: project.publish ?? publishFor(subject),
-    chat: project.chat ?? [],
-    history: project.history ?? {},
-    notes: project.notes ?? {},
-    files: {
-      stills: project.files?.stills ?? {},
-      clips: project.files?.clips ?? {},
-      thumbs: project.files?.thumbs ?? {},
-      voiceOver: project.files?.voiceOver,
-    },
-  };
-}
 
 export function uid() {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-function titleFromIdea(idea: string) {
+export function kindLabel(kind: TrackKind) {
+  return TRACK_KINDS.find((item) => item.id === kind)?.label ?? kind;
+}
+
+export function titleFromIdea(idea: string) {
   const words = idea.replace(/\s+/g, " ").trim().split(" ").slice(0, 8).join(" ");
   if (!words) return "Untitled video";
   return words.length > 52 ? `${words.slice(0, 52)}…` : words;
 }
 
-function voiceOverFor(subject: string): TrackedOutput {
+function emptyTrack(kind: TrackKind, label?: string): Track {
   return {
-    content: [
-      "VOICE OVER — dry read, close mic, intimate, no room reverb",
-      "",
-      "COLD OPEN",
-      `"Don't quit tonight."`,
-      "",
-      "TURN",
-      `We came here because of: ${subject}. One choice. The diner already knows.`,
-      "",
-      "PROOF",
-      "Stay for the work. Stay for the scene you have not made yet.",
-      "",
-      "CLOSER",
-      "If this is the last video, make it the one they remember. If it is not — even better.",
-    ].join("\n"),
-    prompt: `Write a YouTube voice-over read from this episode. Short sentences. Conversational, cinematic, no sponsor energy. Mark breaths. Concept: ${subject}`,
-    recommendations: [
-      "Cut any line the picture already says. VO should add subtext, not captions.",
-      "Record the cold-open line as a whisper-close take so the hook feels private.",
-      "Leave 0.4s of air before the closer so music can enter underneath.",
-    ],
+    id: uid(),
+    kind,
+    label: label ?? kindLabel(kind),
+    prompt: "",
+    content: "",
+    recommendations: [],
+    scenes: [],
+    checks: [],
+    files: [],
+    thumbs: {},
+    history: [],
   };
 }
 
-function soundDesignFor(subject: string): TrackedOutput {
-  return {
-    content: [
-      "SOUND DESIGN — diegetic first, score second",
-      "",
-      "COLD OPEN: neon buzz, distant highway, one ceramic cup set down.",
-      "TURN: door chime, leather booth, a lighter that does not catch.",
-      "PROOF: notebook pages, rain on glass, muffled kitchen pass.",
-      `CLOSER: the room rings out. ${subject} sits in the silence for a beat, then the diner returns.`,
-      "",
-      "Beds: 60Hz fridge hum. Hits: cup, chime, lighter. No stock whooshes.",
-    ].join("\n"),
-    prompt: `Design a YouTube sound bed for this episode. List diegetic FX, room tone, and one signature sound per beat. No trailer whooshes. Story: ${subject}`,
-    recommendations: [
-      "Give each beat one signature sound so the mix is memorable, not busy.",
-      "Duck FX 2dB under VO; never compete with consonants.",
-      "Build a 1-second tail into the closer so music can take the last word.",
-    ],
-  };
-}
-
-function musicFor(subject: string): TrackedOutput {
-  return {
-    content: [
-      "MUSIC — sparse, nocturnal, analog",
-      "",
-      "Theme: slow minor-key Rhodes + muted guitar. 72 BPM. No lyrics.",
-      "OPEN: enter at 0:03 under the first VO breath, -18 LUFS.",
-      "TURN: add a two-note bass figure when the door chime hits.",
-      "PROOF: pull drums (if any) — leave keys and room.",
-      "CLOSER: resolve to a held fourth. End dry. No big swell.",
-      "",
-      `Mood reference: late diner, ${subject}, hope without triumph.`,
-    ].join("\n"),
-    prompt: `Compose a YouTube underscore for this episode. Instrumental, 70–80 BPM, nocturnal, no lyrics, cue points for cold open, turn, proof, closer. Story: ${subject}`,
-    recommendations: [
-      "Keep the theme under the VO. If you cannot hear the words, the cue is too loud.",
-      "Avoid a trailer swell on the closer — resolve small.",
-      "Reuse one motif from the open in the last four bars so the episode feels finished.",
-    ],
-  };
-}
-
-function titlesFor(subject: string): TrackedOutput {
-  const working = titleFromIdea(subject);
-  return {
-    content: [
-      "WORKING TITLE + ALTS — pick one before you design the thumbnail",
-      "",
-      `A. ${working}`,
-      "B. Don't Quit Tonight — The Diner Cut",
-      "C. The Video That Decides If You Stay",
-      "D. One Booth. One Choice. One Episode.",
-      "",
-      "Rules: under 60 characters if possible. Curiosity, not clickbait. Match the thumbnail face/object.",
-    ].join("\n"),
-    prompt: `Write 6 YouTube titles for this episode. Mix curiosity and specificity. Under 70 characters. No all-caps, no year spam. Concept: ${subject}`,
-    recommendations: [
-      "Lead with the emotion or the choice, not the format (\"my story\").",
-      "Test one title that names the place or object from the cold open.",
-      "If the title needs a subtitle, put the subtitle in the first description line instead.",
-    ],
-  };
-}
-
-function thumbnailFor(subject: string): TrackedOutput {
-  return {
-    content: [
-      "THUMBNAIL — 1280×720, face or object readable at mobile size",
-      "",
-      "A. Face in the booth, neon red, 3-word overlay: DON'T QUIT.",
-      "B. Empty diner, one lit booth, no text — title does the talking.",
-      "C. Close-up notebook \"Episode 1\", hand mid-write, high contrast.",
-      "",
-      `Pull the still from scene images. Story: ${subject}`,
-      "Safe zone: keep the subject out of YouTube's timestamp corner.",
-    ].join("\n"),
-    prompt: `Design 3 YouTube thumbnails for this episode, 1280x720. High contrast, one focal point, max 3 words of text, readable at 160px wide. Match the storyboard stills. Story: ${subject}`,
-    recommendations: [
-      "Never put more than three words on the image. The title already talks.",
-      "Export a version with no text in case you A/B test later.",
-      "Match the thumbnail's color to the cold-open still so the click feels honest.",
-    ],
-  };
-}
-
-function descriptionFor(subject: string): TrackedOutput {
-  return {
-    content: [
-      "YOUTUBE DESCRIPTION",
-      "",
-      `First line (search + pinned): A late-night episode about ${subject}.`,
-      "",
-      "0:00 Cold open",
-      "0:08 The turn",
-      "0:45 The proof",
-      "2:30 The closer",
-      "",
-      "What this is",
-      "A cinematic YouTube story — not a recap. If you are deciding whether to keep making videos, this one is for you.",
-      "",
-      "Links",
-      "Next episode →",
-      "Studio notes → aempy.com/studio",
-      "",
-      "Tags",
-      "youtube creator, filmmaking, storytelling, late night, diner, creative block",
-    ].join("\n"),
-    prompt: `Write a YouTube description for this episode: hook line, timestamps/chapters, 2-sentence summary, links, and 8 tags. No keyword stuffing. Concept: ${subject}`,
-    recommendations: [
-      "Put the search sentence in line one. YouTube truncates fast.",
-      "Chapters must match the VO beats or they feel like a lie.",
-      "Repeat the working title's phrasing once so search and packaging agree.",
-    ],
-  };
-}
-
-function publishFor(subject: string): PublishOutput {
-  return {
-    content: [
-      "PUBLISH CHECKLIST",
-      `Episode: ${subject}`,
-      "",
-      "Lock title + thumbnail together. Captions before premiere. End screen on the last 5 seconds. Pin a comment that asks one question.",
-    ].join("\n"),
-    prompt: `Create a YouTube upload checklist for this episode covering captions, chapters, tags, playlist, end screen, cards, pinned comment, and schedule. Concept: ${subject}`,
-    recommendations: [
-      "Don't schedule until captions and the thumbnail are final.",
-      "End screen should point to the next episode in the series, not a random upload.",
-      "Pin a comment that continues the closer's question — that is the community tab in miniature.",
-    ],
-    checks: [
-      { id: "title", label: "Title locked with the thumbnail", done: false },
-      { id: "thumb", label: "Thumbnail uploaded (1280×720)", done: false },
-      { id: "captions", label: "Captions / auto-captions reviewed", done: false },
-      { id: "chapters", label: "Chapters match the description", done: false },
-      { id: "tags", label: "Tags and playlist set", done: false },
-      { id: "endscreen", label: "End screen + cards (last 5 seconds)", done: false },
-      { id: "pin", label: "Pinned comment drafted", done: false },
-      { id: "schedule", label: "Premiere or schedule time set", done: false },
-    ],
-  };
-}
-
-function sceneBeats(subject: string): Scene[] {
+function sceneBeats(subject: string, promptKind: "storyboard" | "image" | "video"): Scene[] {
   const beats = [
     {
       title: "The cold open",
@@ -377,88 +144,486 @@ function sceneBeats(subject: string): Scene[] {
     },
   ];
 
-  return beats.map((beat, index) => ({
-    id: `scene-${index + 1}`,
-    title: beat.title,
-    beat: beat.beat,
-    camera: beat.camera,
-    storyboardPrompt: `Storyboard panel ${index + 1} of 4, 16:9, clean production sketch. Story: ${subject}. Shot: ${beat.title}. Camera: ${beat.camera}. Action: ${beat.beat} Same character continuity across panels. No photoreal render, no text, no watermark.`,
-    imagePrompt: `Photoreal cinematic still, 16:9 YouTube frame, matching storyboard panel ${index + 1}. Story: ${subject}. Shot: ${beat.title}. Camera: ${beat.camera}. Action: ${beat.beat} Motivated practical light, shallow depth of field, grounded wardrobe, continuity of character and location, film grain, no text, no watermark.`,
-    videoPrompt: `5–8 second cinematic clip, 16:9, 24fps, matching scene image ${index + 1} and storyboard panel ${index + 1}. Story: ${subject}. Beat: ${beat.title} — ${beat.beat} Camera: ${beat.camera}. Ambient world sound, no jump cuts, no on-screen text, no watermark.`,
-  }));
+  return beats.map((beat, index) => {
+    let prompt = "";
+    if (promptKind === "storyboard") {
+      prompt = `Storyboard panel ${index + 1} of 4, 16:9, clean production sketch. Story: ${subject}. Shot: ${beat.title}. Camera: ${beat.camera}. Action: ${beat.beat} Same character continuity across panels. No photoreal render, no text, no watermark.`;
+    } else if (promptKind === "image") {
+      prompt = `Photoreal cinematic still, 16:9 YouTube frame. Story: ${subject}. Shot: ${beat.title}. Camera: ${beat.camera}. Action: ${beat.beat} Motivated practical light, shallow depth of field, grounded wardrobe, continuity of character and location, film grain, no text, no watermark.`;
+    } else {
+      prompt = `5–8 second cinematic clip, 16:9, 24fps. Story: ${subject}. Beat: ${beat.title} — ${beat.beat} Camera: ${beat.camera}. Ambient world sound, no jump cuts, no on-screen text, no watermark.`;
+    }
+    return {
+      id: uid(),
+      title: beat.title,
+      beat: beat.beat,
+      camera: beat.camera,
+      prompt,
+    };
+  });
 }
 
-export function buildProject(rawIdea: string): Project {
-  const raw = rawIdea.trim();
-  const subject = raw || "an untold YouTube story";
-  const scenes = sceneBeats(subject);
+export function createTrack(kind: TrackKind, subject: string): Track {
+  const topic = subject.trim() || "this video";
+  const track = emptyTrack(kind);
 
+  if (kind === "notes" || kind === "files") {
+    track.prompt = `Notes and files for: ${topic}`;
+    return track;
+  }
+
+  if (kind === "idea") {
+    track.content = topic === "this video" ? "" : topic;
+    track.prompt = `You are a YouTube showrunner. Turn this into one filmable episode concept with a hook, protagonist, conflict, and ending image. Idea: ${topic}`;
+    track.recommendations = [
+      "Name the viewer in the first line: who this is for, and why they should stay.",
+      "Make the conflict visible on screen — not only described in voiceover.",
+      "Write one signature image the audience could screenshot and remember.",
+    ];
+    return track;
+  }
+
+  if (kind === "title") {
+    const working = titleFromIdea(subject);
+    track.content = `WORKING TITLE + ALTS\n\nA. ${working}\nB.\nC.`;
+    track.prompt = `Write 6 YouTube titles for this video. Mix curiosity and specificity. Under 70 characters. No all-caps. Concept: ${topic}`;
+    track.recommendations = [
+      "Lead with the emotion or the choice, not the format.",
+      "Test one title that names a place or object from the video.",
+      "If you need a subtitle, put it in the first description line instead.",
+    ];
+    return track;
+  }
+
+  if (kind === "script") {
+    track.content = `TITLE: ${titleFromIdea(subject)}\n\nCOLD OPEN\n\nTURN\n\nPROOF\n\nCLOSER`;
+    track.prompt = `Write a YouTube script from this concept. Include spoken lines and visual directions. Concept: ${topic}`;
+    track.recommendations = [
+      "Cut any sentence that restates what the picture already shows.",
+      "Put a pattern interrupt before the 30-second mark.",
+      "End on a visual callback to the open.",
+    ];
+    return track;
+  }
+
+  if (kind === "voiceover") {
+    track.content = "VOICE OVER — dry read\n\nCOLD OPEN\n\nTURN\n\nPROOF\n\nCLOSER";
+    track.prompt = `Write a voice-over read. Short sentences. Conversational. Mark breaths. Concept: ${topic}`;
+    track.recommendations = [
+      "Cut any line the picture already says.",
+      "Leave air before the closer so music can enter.",
+    ];
+    return track;
+  }
+
+  if (kind === "storyboard") {
+    track.scenes = sceneBeats(topic, "storyboard");
+    track.prompt = track.scenes
+      .map(
+        (scene, index) =>
+          `PANEL ${String(index + 1).padStart(2, "0")} · ${scene.title}\n${scene.prompt}`,
+      )
+      .join("\n\n");
+    track.recommendations = [
+      "Keep panels the same aspect ratio and character design.",
+      "Rewrite unclear action in one sentence: who does what.",
+    ];
+    return track;
+  }
+
+  if (kind === "images") {
+    track.scenes = sceneBeats(topic, "image");
+    track.prompt = track.scenes
+      .map(
+        (scene, index) =>
+          `STILL ${String(index + 1).padStart(2, "0")} · ${scene.title}\n${scene.prompt}`,
+      )
+      .join("\n\n");
+    track.recommendations = [
+      "Keep faces readable at mobile size.",
+      "If a still feels generic, add one specific prop and replace only that frame.",
+    ];
+    return track;
+  }
+
+  if (kind === "videos") {
+    track.scenes = sceneBeats(topic, "video");
+    track.prompt = track.scenes
+      .map(
+        (scene, index) =>
+          `CLIP ${String(index + 1).padStart(2, "0")} · ${scene.title}\n${scene.prompt}`,
+      )
+      .join("\n\n");
+    track.recommendations = [
+      "Keep clips short; long generative takes kill YouTube pacing.",
+    ];
+    return track;
+  }
+
+  if (kind === "thumbnail") {
+    track.content = "THUMBNAIL — 1280×720, readable at mobile size\n\nA.\nB.\nC.";
+    track.prompt = `Design 3 YouTube thumbnails, 1280x720. High contrast, one focal point, max 3 words of text. Story: ${topic}`;
+    track.recommendations = [
+      "Never put more than three words on the image.",
+      "Export a version with no text for A/B tests.",
+    ];
+    return track;
+  }
+
+  if (kind === "sound") {
+    track.content = "SOUND DESIGN — diegetic first\n\nBeds:\nHits:\nSignature sound:";
+    track.prompt = `Design a sound bed for this video. List FX, room tone, and one signature sound. Story: ${topic}`;
+    return track;
+  }
+
+  if (kind === "music") {
+    track.content = "MUSIC — instrumental cues\n\nTheme:\nOpen:\nCloser:";
+    track.prompt = `Compose an underscore. Instrumental, no lyrics, cue points. Story: ${topic}`;
+    return track;
+  }
+
+  if (kind === "description") {
+    track.content = `YOUTUBE DESCRIPTION\n\nFirst line:\n\nChapters:\n\nSummary:\n\nLinks:\n\nTags:`;
+    track.prompt = `Write a YouTube description: hook line, chapters, summary, links, tags. Concept: ${topic}`;
+    return track;
+  }
+
+  track.content = `PUBLISH CHECKLIST\nEpisode: ${topic}`;
+  track.prompt = `YouTube upload checklist for this episode. Concept: ${topic}`;
+  track.checks = [
+    { id: "title", label: "Title locked with the thumbnail", done: false },
+    { id: "thumb", label: "Thumbnail uploaded (1280×720)", done: false },
+    { id: "captions", label: "Captions reviewed", done: false },
+    { id: "chapters", label: "Chapters match the description", done: false },
+    { id: "tags", label: "Tags and playlist set", done: false },
+    { id: "endscreen", label: "End screen + cards", done: false },
+    { id: "pin", label: "Pinned comment drafted", done: false },
+    { id: "schedule", label: "Premiere or schedule set", done: false },
+  ];
+  return track;
+}
+
+export function buildProject(name: string): Project {
+  const brief = name.trim();
   return {
     id: uid(),
-    title: titleFromIdea(raw),
+    title: titleFromIdea(brief),
     createdAt: new Date().toISOString(),
-    currentStage: "idea",
-    idea: {
-      raw,
-      refined: `${subject.charAt(0).toUpperCase()}${subject.slice(1)} — told as a short cinematic episode: cold open, turn, proof, closer. Built for YouTube retention, not a talking-head recap.`,
-      prompt: `You are a YouTube showrunner. Turn this creator idea into one iconic episode concept with a hook, protagonist, conflict, and ending image. Keep it specific and filmable. Idea: ${subject}`,
-      recommendations: [
-        "Name the viewer in the first line: who this episode is for, and why they should stay.",
-        "Make the conflict visible on screen — not only described in voiceover.",
-        "Write one signature image the audience could screenshot and remember.",
-      ],
-    },
-    script: {
-      content: [
-        `TITLE: ${titleFromIdea(raw)}`,
-        "",
-        "COLD OPEN (0:00–0:08)",
-        `We open on the world of: ${subject}. No intro bumper. One image, one sound, one question.`,
-        "",
-        "TURN (0:08–0:45)",
-        "The complication arrives. The creator (or character) has to choose. Hold the camera a beat too long.",
-        "",
-        "PROOF (0:45–2:30)",
-        "Scene-by-scene evidence. Each cut earns the next. Voiceover only when the picture cannot say it.",
-        "",
-        "CLOSER (2:30–end)",
-        "Pay off the opening image. Invite the next episode with a leftover question, not a generic subscribe line.",
-      ].join("\n"),
-      prompt: `Write a YouTube video script from this episode concept. Structure: cold open, turn, proof, closer. Include spoken lines and visual directions. Concept: ${subject}`,
-      recommendations: [
-        "Cut any sentence that restates what the picture already shows.",
-        "Put a pattern interrupt (a new location, object, or question) before the 30-second mark.",
-        "End on a visual callback to the cold open so the episode feels designed, not compiled.",
-      ],
-    },
-    scenes,
-    storyboardRecommendations: [
-      "Keep all four panels the same aspect ratio and character design so the board reads as one episode.",
-      "If a panel is unclear, rewrite the action in one sentence: who does what, in which direction.",
-      "Match the closer's camera to the cold open so the storyboard loops.",
-    ],
-    imageRecommendations: [
-      "Match each still to its storyboard panel — same camera, wardrobe, and location.",
-      "Keep faces readable at mobile size — YouTube is watched in a small frame.",
-      "If a still feels generic, add one specific prop from the script and regenerate only that scene.",
-    ],
-    videoRecommendations: [
-      "Match each clip's first frame to its scene image so the edit can intercut without a style break.",
-      "Keep clips under eight seconds; YouTube pacing dies in long generative takes.",
-      "Regenerate with a slower push-in if motion looks floaty or video-game smooth.",
-    ],
-    voiceOver: voiceOverFor(subject),
-    soundDesign: soundDesignFor(subject),
-    music: musicFor(subject),
-    titles: titlesFor(subject),
-    thumbnail: thumbnailFor(subject),
-    description: descriptionFor(subject),
-    publish: publishFor(subject),
+    brief,
+    currentTrackId: null,
+    tracks: [],
     chat: [],
-    history: {},
-    notes: {},
-    files: { stills: {}, clips: {}, thumbs: {} },
   };
+}
+
+export function addTrack(project: Project, kind: TrackKind): Project {
+  const track = createTrack(kind, project.brief || project.title);
+  return {
+    ...project,
+    tracks: [...project.tracks, track],
+    currentTrackId: track.id,
+  };
+}
+
+export function addYoutubeSet(project: Project): Project {
+  const existing = new Set(project.tracks.map((track) => track.kind));
+  const added = YOUTUBE_SET.filter((kind) => !existing.has(kind)).map((kind) =>
+    createTrack(kind, project.brief || project.title),
+  );
+  if (added.length === 0) return project;
+  return {
+    ...project,
+    tracks: [...project.tracks, ...added],
+    currentTrackId: project.currentTrackId ?? added[0]?.id ?? null,
+  };
+}
+
+export function removeTrack(project: Project, trackId: string): Project {
+  const tracks = project.tracks.filter((track) => track.id !== trackId);
+  return {
+    ...project,
+    tracks,
+    currentTrackId:
+      project.currentTrackId === trackId
+        ? (tracks[0]?.id ?? null)
+        : project.currentTrackId,
+    chat: project.chat.filter((message) => message.trackId !== trackId),
+  };
+}
+
+export function moveTrack(project: Project, trackId: string, dir: -1 | 1): Project {
+  const index = project.tracks.findIndex((track) => track.id === trackId);
+  const next = index + dir;
+  if (index < 0 || next < 0 || next >= project.tracks.length) return project;
+  const tracks = [...project.tracks];
+  const [item] = tracks.splice(index, 1);
+  tracks.splice(next, 0, item);
+  return { ...project, tracks };
+}
+
+export function patchTrack(
+  project: Project,
+  trackId: string,
+  patch: Partial<Track> | ((track: Track) => Track),
+): Project {
+  return {
+    ...project,
+    tracks: project.tracks.map((track) => {
+      if (track.id !== trackId) return track;
+      return typeof patch === "function" ? patch(track) : { ...track, ...patch };
+    }),
+  };
+}
+
+export function applyRecommendation(text: string, recommendation: string) {
+  const note = `Refinement: ${recommendation}`;
+  if (text.includes(note)) return text;
+  return `${text.trim()}\n\n${note}`;
+}
+
+type LegacyScene = Scene & {
+  storyboardPrompt?: string;
+  imagePrompt?: string;
+  videoPrompt?: string;
+};
+
+type LegacyProject = {
+  id?: string;
+  title?: string;
+  createdAt?: string;
+  brief?: string;
+  currentTrackId?: string | null;
+  tracks?: Track[];
+  currentStage?: string;
+  idea?: { raw?: string; refined?: string; prompt?: string; recommendations?: string[] };
+  titles?: { content?: string; prompt?: string; recommendations?: string[] };
+  script?: { content?: string; prompt?: string; recommendations?: string[] };
+  voiceOver?: { content?: string; prompt?: string; recommendations?: string[] };
+  scenes?: LegacyScene[];
+  storyboardRecommendations?: string[];
+  imageRecommendations?: string[];
+  videoRecommendations?: string[];
+  thumbnail?: { content?: string; prompt?: string; recommendations?: string[] };
+  soundDesign?: { content?: string; prompt?: string; recommendations?: string[] };
+  music?: { content?: string; prompt?: string; recommendations?: string[] };
+  description?: { content?: string; prompt?: string; recommendations?: string[] };
+  publish?: {
+    content?: string;
+    prompt?: string;
+    recommendations?: string[];
+    checks?: TrackCheck[];
+  };
+  history?: Record<string, TrackVersion[]>;
+  notes?: Record<string, string>;
+  files?: {
+    stills?: Record<string, string>;
+    clips?: Record<string, string>;
+    thumbs?: Record<string, string>;
+    voiceOver?: string;
+  };
+  chat?: Array<{
+    id: string;
+    role: "user" | "assistant";
+    text: string;
+    trackId?: string;
+    stage?: string;
+    at: string;
+  }>;
+};
+
+function fromOutput(
+  kind: TrackKind,
+  output:
+    | { content?: string; prompt?: string; recommendations?: string[] }
+    | undefined,
+  extra: Partial<Track> = {},
+): Track {
+  return {
+    ...emptyTrack(kind),
+    content: output?.content ?? "",
+    prompt: output?.prompt ?? "",
+    recommendations: output?.recommendations ?? [],
+    ...extra,
+  };
+}
+
+function migrateLegacy(legacy: LegacyProject): Project {
+  const brief = legacy.brief || legacy.idea?.raw || legacy.title || "";
+  const scenes = legacy.scenes ?? [];
+  const history = legacy.history ?? {};
+  const notes = legacy.notes ?? {};
+  const files = legacy.files ?? {};
+
+  const storyboard = fromOutput("storyboard", {
+    content: notes.storyboard ?? "",
+    prompt: scenes
+      .map(
+        (scene, index) =>
+          `PANEL ${String(index + 1).padStart(2, "0")} · ${scene.title}\n${scene.storyboardPrompt ?? scene.prompt}`,
+      )
+      .join("\n\n"),
+    recommendations: legacy.storyboardRecommendations,
+  }, {
+    scenes: scenes.map((scene) => ({
+      id: scene.id,
+      title: scene.title,
+      beat: scene.beat,
+      camera: scene.camera,
+      prompt: scene.storyboardPrompt ?? scene.prompt,
+    })),
+    history: history.storyboard ?? [],
+  });
+
+  const images = fromOutput("images", {
+    content: notes.images ?? "",
+    prompt: scenes
+      .map(
+        (scene, index) =>
+          `STILL ${String(index + 1).padStart(2, "0")} · ${scene.title}\n${scene.imagePrompt ?? scene.prompt}`,
+      )
+      .join("\n\n"),
+    recommendations: legacy.imageRecommendations,
+  }, {
+    scenes: scenes.map((scene) => ({
+      id: scene.id,
+      title: scene.title,
+      beat: scene.beat,
+      camera: scene.camera,
+      prompt: scene.imagePrompt ?? scene.prompt,
+      fileId: files.stills?.[scene.id],
+    })),
+    history: history.images ?? [],
+  });
+
+  const videos = fromOutput("videos", {
+    content: notes.videos ?? "",
+    prompt: scenes
+      .map(
+        (scene, index) =>
+          `CLIP ${String(index + 1).padStart(2, "0")} · ${scene.title}\n${scene.videoPrompt ?? scene.prompt}`,
+      )
+      .join("\n\n"),
+    recommendations: legacy.videoRecommendations,
+  }, {
+    scenes: scenes.map((scene) => ({
+      id: scene.id,
+      title: scene.title,
+      beat: scene.beat,
+      camera: scene.camera,
+      prompt: scene.videoPrompt ?? scene.prompt,
+      fileId: files.clips?.[scene.id],
+    })),
+    history: history.videos ?? [],
+  });
+
+  const tracks: Track[] = [
+    fromOutput("idea", {
+      content: legacy.idea?.refined ?? brief,
+      prompt: legacy.idea?.prompt,
+      recommendations: legacy.idea?.recommendations,
+    }, { history: history.idea ?? [] }),
+    fromOutput("title", legacy.titles, { history: history.titles ?? [] }),
+    fromOutput("script", legacy.script, { history: history.script ?? [] }),
+    fromOutput("voiceover", legacy.voiceOver, {
+      audioId: files.voiceOver,
+      history: history.voiceover ?? [],
+    }),
+    storyboard,
+    images,
+    fromOutput("thumbnail", legacy.thumbnail, {
+      thumbs: files.thumbs ?? {},
+      history: history.thumbnail ?? [],
+    }),
+    videos,
+    fromOutput("sound", legacy.soundDesign, { history: history.sound ?? [] }),
+    fromOutput("music", legacy.music, { history: history.music ?? [] }),
+    fromOutput("description", legacy.description, {
+      history: history.description ?? [],
+    }),
+    fromOutput("publish", legacy.publish, {
+      checks: legacy.publish?.checks ?? [],
+      history: history.publish ?? [],
+    }),
+  ];
+
+  const stageToKind: Record<string, TrackKind> = {
+    idea: "idea",
+    titles: "title",
+    script: "script",
+    voiceover: "voiceover",
+    storyboard: "storyboard",
+    images: "images",
+    thumbnail: "thumbnail",
+    videos: "videos",
+    sound: "sound",
+    music: "music",
+    description: "description",
+    publish: "publish",
+  };
+  const currentKind = stageToKind[legacy.currentStage ?? ""] ?? "idea";
+  const currentTrackId =
+    tracks.find((track) => track.kind === currentKind)?.id ?? tracks[0]?.id ?? null;
+
+  const chat: ChatMessage[] = (legacy.chat ?? []).map((message) => {
+    const kind = stageToKind[message.stage ?? ""] ?? currentKind;
+    return {
+      id: message.id,
+      role: message.role,
+      text: message.text,
+      at: message.at,
+      trackId:
+        message.trackId ||
+        tracks.find((track) => track.kind === kind)?.id ||
+        currentTrackId ||
+        "",
+    };
+  });
+
+  return {
+    id: String(legacy.id ?? uid()),
+    title: String(legacy.title ?? titleFromIdea(brief)),
+    createdAt: String(legacy.createdAt ?? new Date().toISOString()),
+    brief,
+    currentTrackId,
+    tracks,
+    chat,
+  };
+}
+
+function normalizeTrack(track: Track): Track {
+  return {
+    ...emptyTrack(track.kind, track.label),
+    ...track,
+    scenes: track.scenes ?? [],
+    checks: track.checks ?? [],
+    files: track.files ?? [],
+    thumbs: track.thumbs ?? {},
+    history: track.history ?? [],
+    recommendations: track.recommendations ?? [],
+  };
+}
+
+export function migrateProject(raw: unknown): Project {
+  const project = raw as LegacyProject;
+  if (Array.isArray(project.tracks)) {
+    const tracks = project.tracks.map(normalizeTrack);
+    return {
+      id: String(project.id ?? uid()),
+      title: String(project.title ?? "Untitled video"),
+      createdAt: String(project.createdAt ?? new Date().toISOString()),
+      brief: String(project.brief ?? ""),
+      currentTrackId: project.currentTrackId ?? tracks[0]?.id ?? null,
+      tracks,
+      chat: (project.chat ?? []).map((message) => ({
+        id: message.id,
+        role: message.role,
+        text: message.text,
+        at: message.at,
+        trackId: message.trackId ?? tracks[0]?.id ?? "",
+      })),
+    };
+  }
+  return migrateLegacy(project);
 }
 
 export const SAMPLE_IDEA =
@@ -469,7 +634,7 @@ export function loadProjects(): Project[] {
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
-    const parsed = JSON.parse(raw) as Project[];
+    const parsed = JSON.parse(raw) as unknown[];
     return Array.isArray(parsed) ? parsed.map(migrateProject) : [];
   } catch {
     return [];
@@ -495,17 +660,15 @@ export function deleteProject(id: string) {
   saveProjects(loadProjects().filter((project) => project.id !== id));
 }
 
-export function nextStage(stage: StageId): StageId | null {
-  const index = STAGES.findIndex((item) => item.id === stage);
-  return STAGES[index + 1]?.id ?? null;
-}
-
-export function applyRecommendation(text: string, recommendation: string) {
-  const note = `Refinement: ${recommendation}`;
-  if (text.includes(note)) return text;
-  return `${text.trim()}\n\n${note}`;
-}
-
-export function stageIndex(stage: StageId) {
-  return STAGES.findIndex((item) => item.id === stage);
+export function collectAssetIds(project: Project) {
+  const ids: string[] = [];
+  for (const track of project.tracks) {
+    if (track.audioId) ids.push(track.audioId);
+    ids.push(...track.files);
+    ids.push(...Object.values(track.thumbs).filter(Boolean));
+    for (const scene of track.scenes) {
+      if (scene.fileId) ids.push(scene.fileId);
+    }
+  }
+  return ids;
 }

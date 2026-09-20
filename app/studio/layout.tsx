@@ -5,7 +5,7 @@ import "./studio.css";
 export const metadata: Metadata = {
   title: "Studio — aempy",
   description:
-    "Track each YouTube video from idea to publish: titles, thumbnails, storyboards, scene images, clips, voice over, sound, music, description, and upload checklist.",
+    "Add the pieces each YouTube video needs — titles, thumbnails, scripts, stills — without a forced pipeline.",
 };
 
 export default function StudioLayout({

@@ -5,10 +5,8 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import {
   PROJECTS_CHANGED,
-  STAGES,
   deleteProject,
   loadProjects,
-  stageIndex,
   type Project,
 } from "@/lib/projects";
 
@@ -101,7 +99,9 @@ export function StudioShell({ children }: { children: React.ReactNode }) {
                       <strong>{project.title}</strong>
                       <span>
                         {formatDate(project.createdAt)} ·{" "}
-                        {STAGES[stageIndex(project.currentStage)]?.label}
+                        {project.tracks.length === 0
+                          ? "No tracks"
+                          : `${project.tracks.length} track${project.tracks.length === 1 ? "" : "s"}`}
                       </span>
                     </Link>
                     <button

@@ -6,6 +6,7 @@ import { importProjectBackup } from "@/lib/backup";
 import {
   PROJECTS_CHANGED,
   SAMPLE_IDEA,
+  addYoutubeSet,
   buildProject,
   loadProjects,
   upsertProject,
@@ -14,7 +15,7 @@ import {
 
 export function StudioHome() {
   const router = useRouter();
-  const [idea, setIdea] = useState("");
+  const [name, setName] = useState("");
   const [projects, setProjects] = useState<Project[]>([]);
   const [ready, setReady] = useState(false);
 
@@ -30,47 +31,56 @@ export function StudioHome() {
 
   const empty = useMemo(() => ready && projects.length === 0, [ready, projects]);
 
-  function createFrom(raw: string) {
-    const project = buildProject(raw);
+  function open(project: Project) {
     upsertProject(project);
     router.push(`/studio/${project.id}`);
   }
 
   function onSubmit(event: FormEvent) {
     event.preventDefault();
-    if (!idea.trim()) return;
-    createFrom(idea);
+    if (!name.trim()) return;
+    open(buildProject(name));
   }
 
   return (
     <div className="studio">
       <p className="kicker">Video projects</p>
-      <h1>Track the story from idea to publish.</h1>
+      <h1>Track what this video actually needs.</h1>
       <p className="studio-lede">
-        One board per YouTube video. Pick a project in the left sidebar, or
-        start a new idea below.
+        Start empty. Add a title, a thumbnail, a script — only the pieces you
+        use. The full YouTube set is optional.
       </p>
 
       <form className="new-project" onSubmit={onSubmit}>
-        <label className="kicker" htmlFor="idea">
-          New video idea
+        <label className="kicker" htmlFor="name">
+          New video
         </label>
         <textarea
-          id="idea"
-          value={idea}
-          onChange={(event) => setIdea(event.target.value)}
-          placeholder="What is the episode about? Who is it for? What should they feel at the end?"
+          id="name"
+          value={name}
+          onChange={(event) => setName(event.target.value)}
+          placeholder="Working title or a one-line brief"
         />
         <div className="row-actions">
           <button className="button primary" type="submit">
-            Create project
+            Create empty project
           </button>
           <button
             className="button ghost"
             type="button"
-            onClick={() => createFrom(SAMPLE_IDEA)}
+            onClick={() => {
+              if (!name.trim()) return;
+              open(addYoutubeSet(buildProject(name)));
+            }}
           >
-            Start with a sample
+            Create with YouTube set
+          </button>
+          <button
+            className="button ghost"
+            type="button"
+            onClick={() => open(addYoutubeSet(buildProject(SAMPLE_IDEA)))}
+          >
+            Sample with YouTube set
           </button>
           <label className="button ghost file-button">
             Import backup
@@ -95,7 +105,7 @@ export function StudioHome() {
       </form>
 
       {empty ? (
-        <p className="empty">No projects yet. Capture an idea to open a board.</p>
+        <p className="empty">No projects yet. Name a video to open a board.</p>
       ) : null}
     </div>
   );
