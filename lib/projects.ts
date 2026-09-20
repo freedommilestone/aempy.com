@@ -434,8 +434,11 @@ export function loadProjects(): Project[] {
   }
 }
 
+export const PROJECTS_CHANGED = "aempy-projects-changed";
+
 export function saveProjects(projects: Project[]) {
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
+  window.dispatchEvent(new Event(PROJECTS_CHANGED));
 }
 
 export function upsertProject(project: Project) {

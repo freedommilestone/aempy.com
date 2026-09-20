@@ -279,7 +279,7 @@ export function ProjectBoard({ id }: { id: string }) {
   return (
     <div className="studio">
       <Link className="meta" href="/studio">
-        ← All projects
+        ← New project
       </Link>
       <h1 className="board-title">{project.title}</h1>
       <p className="studio-lede">

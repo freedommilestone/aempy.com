@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import { StudioShell } from "./StudioShell";
 import "./studio.css";
 
 export const metadata: Metadata = {
   title: "Studio — aempy",
   description:
-    "Track each YouTube video from idea to publish: title, thumbnail, script, voice over, storyboard, images, clips, sound, music, description, and upload checklist.",
+    "Track each YouTube video from idea to publish: titles, thumbnails, storyboards, scene images, clips, voice over, sound, music, description, and upload checklist.",
 };
 
 export default function StudioLayout({
@@ -15,18 +15,7 @@ export default function StudioLayout({
 }>) {
   return (
     <div className="studio-body">
-      <header className="studio-header">
-        <Link className="logo" href="/">
-          aempy
-        </Link>
-        <nav className="studio-nav" aria-label="Studio">
-          <Link href="/">Home</Link>
-          <Link href="/studio" aria-current="page">
-            Studio
-          </Link>
-        </nav>
-      </header>
-      {children}
+      <StudioShell>{children}</StudioShell>
     </div>
   );
 }

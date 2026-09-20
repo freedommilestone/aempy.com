@@ -1,25 +1,15 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import {
+  PROJECTS_CHANGED,
   SAMPLE_IDEA,
-  STAGES,
   buildProject,
-  deleteProject,
   loadProjects,
-  stageIndex,
   upsertProject,
   type Project,
 } from "@/lib/projects";
-
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat("en", {
-    month: "short",
-    day: "numeric",
-  }).format(new Date(value));
-}
 
 export function StudioHome() {
   const router = useRouter();
@@ -28,22 +18,16 @@ export function StudioHome() {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    setProjects(loadProjects());
-    setReady(true);
+    function refresh() {
+      setProjects(loadProjects());
+      setReady(true);
+    }
+    refresh();
+    window.addEventListener(PROJECTS_CHANGED, refresh);
+    return () => window.removeEventListener(PROJECTS_CHANGED, refresh);
   }, []);
 
-  const sorted = useMemo(
-    () =>
-      [...projects].sort(
-        (a, b) =>
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-      ),
-    [projects],
-  );
-
-  function refresh() {
-    setProjects(loadProjects());
-  }
+  const empty = useMemo(() => ready && projects.length === 0, [ready, projects]);
 
   function createFrom(raw: string) {
     const project = buildProject(raw);
@@ -62,9 +46,8 @@ export function StudioHome() {
       <p className="kicker">Video projects</p>
       <h1>Track the story from idea to publish.</h1>
       <p className="studio-lede">
-        One board per YouTube video: idea, title, script, voice over,
-        storyboard, stills, thumbnail, clips, sound, music, description, and
-        a publish checklist.
+        One board per YouTube video. Pick a project in the left sidebar, or
+        start a new idea below.
       </p>
 
       <form className="new-project" onSubmit={onSubmit}>
@@ -91,38 +74,9 @@ export function StudioHome() {
         </div>
       </form>
 
-      {ready && sorted.length === 0 ? (
+      {empty ? (
         <p className="empty">No projects yet. Capture an idea to open a board.</p>
-      ) : (
-        <div className="project-list">
-          {sorted.map((project) => (
-            <article key={project.id} className="project-card">
-              <Link href={`/studio/${project.id}`}>
-                <h2>{project.title}</h2>
-                <p className="meta">
-                  {formatDate(project.createdAt)} · Stage{" "}
-                  {STAGES[stageIndex(project.currentStage)]?.label}
-                </p>
-              </Link>
-              <div className="row-actions">
-                <Link className="button ghost" href={`/studio/${project.id}`}>
-                  Open board
-                </Link>
-                <button
-                  className="button danger"
-                  type="button"
-                  onClick={() => {
-                    deleteProject(project.id);
-                    refresh();
-                  }}
-                >
-                  Remove
-                </button>
-              </div>
-            </article>
-          ))}
-        </div>
-      )}
+      ) : null}
     </div>
   );
 }
