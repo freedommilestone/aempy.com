@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 import { FileSlot } from "@/app/studio/FileSlot";
+import { BeatBoard } from "@/app/studio/BeatBoard";
 import { getAsset } from "@/lib/assets";
+import { alignBeats } from "@/lib/beats";
 import { downloadProjectBackup } from "@/lib/backup";
 import type { ChatResult } from "@/lib/chat";
 import {
@@ -87,7 +89,7 @@ export function ProjectBoard({ id }: { id: string }) {
 
   useEffect(() => {
     const found = loadProjects().find((item) => item.id === id) ?? null;
-    setProject(found);
+    setProject(found ? alignBeats(found) : null);
     setReady(true);
   }, [id]);
 
@@ -138,7 +140,7 @@ export function ProjectBoard({ id }: { id: string }) {
       files: [...track.files, ...files.map((file) => file.id)],
       content: text.trim() ? text : track.content,
     });
-    persist({ ...next, currentTrackId: ensured.trackId });
+    persist(alignBeats({ ...next, currentTrackId: ensured.trackId }));
     setNotice("Script added to this project.");
   }
 
@@ -164,17 +166,19 @@ export function ProjectBoard({ id }: { id: string }) {
         images.map((file) => ({ id: file.id, title: stemName(file.name) })),
       );
     }
-    persist(next);
+    persist(alignBeats(next));
     setNotice("Storyboard or scene images added to this project.");
   }
 
   function ingestClips(files: { id: string; name: string }[]) {
     const slot = ensureTrack(active, "videos");
     persist(
-      attachFilesToScenes(
-        slot.project,
-        slot.trackId,
-        files.map((file) => ({ id: file.id, title: stemName(file.name) })),
+      alignBeats(
+        attachFilesToScenes(
+          slot.project,
+          slot.trackId,
+          files.map((file) => ({ id: file.id, title: stemName(file.name) })),
+        ),
       ),
     );
     setNotice("Clips added to this project.");
@@ -302,6 +306,8 @@ export function ProjectBoard({ id }: { id: string }) {
           onAssignedMany={ingestClips}
         />
       </div>
+
+      <BeatBoard project={active} persist={persist} />
 
       <div className="track-bar">
         {active.tracks.map((track, index) => (

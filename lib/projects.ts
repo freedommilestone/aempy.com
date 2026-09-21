@@ -70,11 +70,36 @@ export type Track = {
   history: TrackVersion[];
 };
 
+export type GradeKey = "script" | "vo" | "still" | "clip";
+
+export type MediaTake = {
+  id: string;
+  at: string;
+  prompt: string;
+  kind: "still" | "clip";
+  fileId?: string;
+};
+
+export type Beat = {
+  id: string;
+  title: string;
+  script: string;
+  vo: string;
+  prompt: string;
+  recommendations: string[];
+  stillFileId?: string;
+  clipFileId?: string;
+  stillTakes: MediaTake[];
+  clipTakes: MediaTake[];
+  grades: Partial<Record<GradeKey, number>>;
+};
+
 export type ChatMessage = {
   id: string;
   role: "user" | "assistant";
   text: string;
   trackId: string;
+  beatId?: string;
   at: string;
 };
 
@@ -84,7 +109,9 @@ export type Project = {
   createdAt: string;
   brief: string;
   currentTrackId: string | null;
+  currentBeatId: string | null;
   tracks: Track[];
+  beats: Beat[];
   chat: ChatMessage[];
 };
 
@@ -311,7 +338,9 @@ export function buildProject(name: string): Project {
     createdAt: new Date().toISOString(),
     brief,
     currentTrackId: null,
+    currentBeatId: null,
     tracks: [],
+    beats: [],
     chat: [],
   };
 }
@@ -403,7 +432,9 @@ type LegacyProject = {
   createdAt?: string;
   brief?: string;
   currentTrackId?: string | null;
+  currentBeatId?: string | null;
   tracks?: Track[];
+  beats?: Beat[];
   currentStage?: string;
   idea?: { raw?: string; refined?: string; prompt?: string; recommendations?: string[] };
   titles?: { content?: string; prompt?: string; recommendations?: string[] };
@@ -595,8 +626,26 @@ function migrateLegacy(legacy: LegacyProject): Project {
     createdAt: String(legacy.createdAt ?? new Date().toISOString()),
     brief,
     currentTrackId,
+    currentBeatId: legacy.currentBeatId ?? null,
     tracks,
+    beats: legacy.beats ?? [],
     chat,
+  };
+}
+
+function normalizeBeat(beat: Beat): Beat {
+  return {
+    id: beat.id,
+    title: beat.title || "Beat",
+    script: beat.script ?? "",
+    vo: beat.vo ?? "",
+    prompt: beat.prompt ?? "",
+    recommendations: beat.recommendations ?? [],
+    stillFileId: beat.stillFileId,
+    clipFileId: beat.clipFileId,
+    stillTakes: beat.stillTakes ?? [],
+    clipTakes: beat.clipTakes ?? [],
+    grades: beat.grades ?? {},
   };
 }
 
@@ -623,7 +672,9 @@ export function migrateProject(raw: unknown): Project {
       createdAt: String(project.createdAt ?? new Date().toISOString()),
       brief: String(project.brief ?? ""),
       currentTrackId: project.currentTrackId ?? tracks[0]?.id ?? null,
+      currentBeatId: project.currentBeatId ?? project.beats?.[0]?.id ?? null,
       tracks,
+      beats: (project.beats ?? []).map(normalizeBeat),
       chat: (project.chat ?? []).map((message) => ({
         id: message.id,
         role: message.role,
@@ -678,6 +729,13 @@ export function collectAssetIds(project: Project) {
     ids.push(...Object.values(track.thumbs).filter(Boolean));
     for (const scene of track.scenes) {
       if (scene.fileId) ids.push(scene.fileId);
+    }
+  }
+  for (const beat of project.beats ?? []) {
+    if (beat.stillFileId) ids.push(beat.stillFileId);
+    if (beat.clipFileId) ids.push(beat.clipFileId);
+    for (const take of [...beat.stillTakes, ...beat.clipTakes]) {
+      if (take.fileId) ids.push(take.fileId);
     }
   }
   return ids;

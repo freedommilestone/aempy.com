@@ -272,6 +272,90 @@ button.button.danger {
   font-size: 0.88rem;
 }
 
+.beat-studio {
+  margin: 0 0 1.5rem;
+}
+
+.beat-layout {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.7fr) minmax(0, 1.4fr);
+  gap: 1rem;
+  margin-top: 0.75rem;
+  align-items: start;
+}
+
+.beat-list {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.beat-item {
+  appearance: none;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  background: var(--bg-elevated);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 0.7rem 0.8rem;
+  cursor: pointer;
+}
+
+.beat-item strong,
+.beat-item span {
+  display: block;
+}
+
+.beat-item span:last-child {
+  color: var(--muted);
+  font-size: 0.85rem;
+  margin-top: 0.25rem;
+}
+
+.beat-item.is-current {
+  border-color: var(--accent);
+}
+
+.beat-item.is-weak {
+  border-color: rgba(226, 61, 40, 0.45);
+}
+
+.beat-media {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  margin-bottom: 0.85rem;
+}
+
+.grade-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+  margin: 0.35rem 0;
+}
+
+.grade-dot {
+  appearance: none;
+  font: inherit;
+  width: 1.8rem;
+  height: 1.8rem;
+  margin-left: 0.2rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.grade-dot.is-on {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
 .ingest {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -631,6 +715,8 @@ button.button.danger {
 @media (max-width: 860px) {
   .board,
   .ingest,
+  .beat-layout,
+  .beat-media,
   .storyboard-board {
     grid-template-columns: 1fr;
   }
