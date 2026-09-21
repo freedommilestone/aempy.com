@@ -3,12 +3,14 @@
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 import { FileSlot } from "@/app/studio/FileSlot";
+import { getAsset } from "@/lib/assets";
 import { downloadProjectBackup } from "@/lib/backup";
 import type { ChatResult } from "@/lib/chat";
 import {
   TRACK_KINDS,
   addTrack,
   addYoutubeSet,
+  ensureTrack,
   moveTrack,
   patchTrack,
   removeTrack,
@@ -20,6 +22,7 @@ import {
 import {
   addScene,
   appendChat,
+  attachFilesToScenes,
   captureVersion,
   patchScene,
   removeScene,
@@ -50,6 +53,28 @@ function assignMap(map: Record<string, string>, key: string, nextId?: string) {
   if (nextId) next[key] = nextId;
   else delete next[key];
   return next;
+}
+
+function stemName(name: string) {
+  return name.replace(/\.[^.]+$/, "") || name;
+}
+
+async function textFromAsset(id: string, name: string) {
+  const blob = await getAsset(id);
+  if (!blob) return "";
+  const looksText =
+    /^(text\/|application\/json)/.test(blob.type) ||
+    /\.(txt|md|markdown|fountain|rtf)$/i.test(name);
+  if (!looksText) return "";
+  return blob.text();
+}
+
+function pictureKind(project: Project): TrackKind {
+  if (project.tracks.some((track) => track.kind === "images")) return "images";
+  if (project.tracks.some((track) => track.kind === "storyboard")) {
+    return "storyboard";
+  }
+  return "images";
 }
 
 export function ProjectBoard({ id }: { id: string }) {
@@ -101,6 +126,58 @@ export function ProjectBoard({ id }: { id: string }) {
     if (!view) return;
     persist(captureVersion(active, view.id));
     setNotice("Version saved for this track.");
+  }
+
+  async function ingestScript(files: { id: string; name: string }[]) {
+    const ensured = ensureTrack(active, "script");
+    let next = ensured.project;
+    const track = trackById(next, ensured.trackId);
+    if (!track) return;
+    const text = await textFromAsset(files[0].id, files[0].name);
+    next = patchTrack(next, ensured.trackId, {
+      files: [...track.files, ...files.map((file) => file.id)],
+      content: text.trim() ? text : track.content,
+    });
+    persist({ ...next, currentTrackId: ensured.trackId });
+    setNotice("Script added to this project.");
+  }
+
+  function ingestPictures(files: { id: string; name: string }[]) {
+    const pdfs = files.filter((file) => /\.pdf$/i.test(file.name));
+    const images = files.filter((file) => !/\.pdf$/i.test(file.name));
+    let next = active;
+    if (pdfs.length) {
+      const board = ensureTrack(next, "storyboard");
+      next = board.project;
+      const track = trackById(next, board.trackId);
+      next = patchTrack(next, board.trackId, {
+        files: [...(track?.files ?? []), ...pdfs.map((file) => file.id)],
+      });
+      next = { ...next, currentTrackId: board.trackId };
+    }
+    if (images.length) {
+      const kind = pictureKind(next);
+      const slot = ensureTrack(next, kind);
+      next = attachFilesToScenes(
+        slot.project,
+        slot.trackId,
+        images.map((file) => ({ id: file.id, title: stemName(file.name) })),
+      );
+    }
+    persist(next);
+    setNotice("Storyboard or scene images added to this project.");
+  }
+
+  function ingestClips(files: { id: string; name: string }[]) {
+    const slot = ensureTrack(active, "videos");
+    persist(
+      attachFilesToScenes(
+        slot.project,
+        slot.trackId,
+        files.map((file) => ({ id: file.id, title: stemName(file.name) })),
+      ),
+    );
+    setNotice("Clips added to this project.");
   }
 
   async function sendChat(event: FormEvent) {
@@ -194,10 +271,37 @@ export function ProjectBoard({ id }: { id: string }) {
         placeholder="What is this video? Optional — used when you add a YouTube set or a new track."
       />
       <p className="studio-lede">
-        Add only the tracks this video needs. Chat, versions, and uploads stay
-        on the track you have open.
+        Drop in the script, storyboard or stills, and clips. Agents can generate
+        against those files, and you can still see every prompt.
       </p>
       {notice ? <p className="notice">{notice}</p> : null}
+
+      <div className="ingest">
+        <FileSlot
+          label="Script"
+          accept=".txt,.md,.pdf,.doc,.docx,text/plain,application/pdf"
+          kind="file"
+          multiple
+          onAssigned={() => undefined}
+          onAssignedMany={ingestScript}
+        />
+        <FileSlot
+          label="Storyboard or scene images"
+          accept="image/*,application/pdf"
+          kind="image"
+          multiple
+          onAssigned={() => undefined}
+          onAssignedMany={ingestPictures}
+        />
+        <FileSlot
+          label="Video clips"
+          accept="video/*"
+          kind="video"
+          multiple
+          onAssigned={() => undefined}
+          onAssignedMany={ingestClips}
+        />
+      </div>
 
       <div className="track-bar">
         {active.tracks.map((track, index) => (
@@ -243,8 +347,8 @@ export function ProjectBoard({ id }: { id: string }) {
 
       {active.tracks.length === 0 ? (
         <p className="empty">
-          Nothing on this board yet. Add a title, a thumbnail, notes — whatever
-          you actually need — or drop in the full YouTube set.
+          Upload a script, stills, or clips above — or add a track if you want
+          the agent to generate first.
         </p>
       ) : null}
 
@@ -312,6 +416,31 @@ export function ProjectBoard({ id }: { id: string }) {
               </div>
             )}
 
+            {view.kind === "script" && (
+              <div className="scene-grid">
+                {view.files.map((assetId, index) => (
+                  <FileSlot
+                    key={assetId}
+                    label={`Script file ${index + 1}`}
+                    accept=".txt,.md,.pdf,.doc,.docx,text/plain,application/pdf"
+                    kind="file"
+                    assetId={assetId}
+                    onAssigned={(nextId) =>
+                      persist(
+                        patchTrack(active, view.id, {
+                          files: nextId
+                            ? view.files.map((id) =>
+                                id === assetId ? nextId : id,
+                              )
+                            : view.files.filter((id) => id !== assetId),
+                        }),
+                      )
+                    }
+                  />
+                ))}
+              </div>
+            )}
+
             {audio && (
               <FileSlot
                 label="Audio file"
@@ -370,6 +499,19 @@ export function ProjectBoard({ id }: { id: string }) {
                           Panel {String(index + 1).padStart(2, "0")}
                           {scene.camera ? ` · ${scene.camera}` : ""}
                         </span>
+                        <FileSlot
+                          label="Panel image"
+                          accept="image/*"
+                          kind="image"
+                          assetId={scene.fileId}
+                          onAssigned={(nextId) =>
+                            persist(
+                              patchScene(active, view.id, scene.id, {
+                                fileId: nextId,
+                              }),
+                            )
+                          }
+                        />
                         <input
                           value={scene.title}
                           onChange={(event) =>

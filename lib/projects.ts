@@ -325,6 +325,16 @@ export function addTrack(project: Project, kind: TrackKind): Project {
   };
 }
 
+export function ensureTrack(project: Project, kind: TrackKind) {
+  const existing = project.tracks.find((track) => track.kind === kind);
+  if (existing) {
+    return { project, trackId: existing.id };
+  }
+  const next = addTrack(project, kind);
+  const track = next.tracks[next.tracks.length - 1];
+  return { project: next, trackId: track.id };
+}
+
 export function addYoutubeSet(project: Project): Project {
   const existing = new Set(project.tracks.map((track) => track.kind));
   const added = YOUTUBE_SET.filter((kind) => !existing.has(kind)).map((kind) =>

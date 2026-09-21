@@ -72,17 +72,48 @@ export function withPromptRefinement(
   }));
 }
 
-export function addScene(project: Project, trackId: string): Project {
+export function addScene(
+  project: Project,
+  trackId: string,
+  init?: Partial<Scene>,
+): Project {
   const scene: Scene = {
     id: uid(),
     title: "New beat",
     beat: "",
     prompt: "",
+    ...init,
   };
   return patchTrack(project, trackId, (track) => ({
     ...track,
     scenes: [...track.scenes, scene],
   }));
+}
+
+export function attachFilesToScenes(
+  project: Project,
+  trackId: string,
+  files: { id: string; title: string }[],
+): Project {
+  let next = project;
+  const track = trackById(next, trackId);
+  if (!track) return project;
+  const openSlots = track.scenes.filter((scene) => !scene.fileId);
+  files.forEach((file, index) => {
+    const slot = openSlots[index];
+    if (slot) {
+      next = patchScene(next, trackId, slot.id, {
+        fileId: file.id,
+        title: slot.title || file.title,
+      });
+      return;
+    }
+    next = addScene(next, trackId, {
+      title: file.title,
+      fileId: file.id,
+    });
+  });
+  return { ...next, currentTrackId: trackId };
 }
 
 export function removeScene(
