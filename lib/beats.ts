@@ -210,6 +210,20 @@ export function autoRecommendations(beat: Beat) {
 export function splitIntoBeats(text: string): string[] {
   const trimmed = text.trim();
   if (!trimmed) return [];
+  const timestamped = splitTimestampedBeats(trimmed);
+  if (timestamped.length > 0) return timestamped;
+  const headed = trimmed.split(
+    /\n(?=(?:COLD OPEN|TURN|PROOF|CLOSER|SCENE\s+\d+|BEAT\s+\d+|INT\.|EXT\.|TITLE:))/i,
+  );
+  if (headed.length > 1) return headed.map((item) => item.trim()).filter(Boolean);
+  const paras = trimmed.split(/\n{2,}/).map((item) => item.trim()).filter(Boolean);
+  if (paras.length > 1) return paras;
+  return [trimmed];
+}
+
+function splitTimestampedBeats(text: string): string[] {
+  const trimmed = text.trim();
+  if (!trimmed) return [];
   const lines = trimmed.split(/\n/);
   const timestampStarts = lines
     .map((line, index) => (TIMESTAMP_LINE_RE.test(line) ? index : -1))
@@ -223,13 +237,7 @@ export function splitIntoBeats(text: string): string[] {
     });
     return chunks;
   }
-  const headed = trimmed.split(
-    /\n(?=(?:COLD OPEN|TURN|PROOF|CLOSER|SCENE\s+\d+|BEAT\s+\d+|INT\.|EXT\.|TITLE:))/i,
-  );
-  if (headed.length > 1) return headed.map((item) => item.trim()).filter(Boolean);
-  const paras = trimmed.split(/\n{2,}/).map((item) => item.trim()).filter(Boolean);
-  if (paras.length > 1) return paras;
-  return [trimmed];
+  return [];
 }
 
 function titleFromChunk(chunk: string, index: number) {
@@ -265,11 +273,20 @@ export function alignBeats(project: Project): Project {
     project.tracks.find((track) => track.kind === "storyboard")?.scenes ??
     [];
   const clips = project.tracks.find((track) => track.kind === "videos")?.scenes ?? [];
-  const scriptParts = splitIntoBeats(script);
-  const voParts = splitIntoBeats(vo);
+  const scriptParts = splitTimestampedBeats(script);
+  const voParts = splitTimestampedBeats(vo);
+  const timelineCount = Math.max(scriptParts.length, voParts.length, stills.length, clips.length);
+
+  if (timelineCount === 0) {
+    return {
+      ...project,
+      beats: [],
+      currentBeatId: null,
+    };
+  }
 
   if (beats.length === 0) {
-    const count = Math.max(scriptParts.length, voParts.length, stills.length, clips.length);
+    const count = timelineCount;
     const built = Array.from({ length: count }, (_, index) => {
       const still = stills[index];
       const clip = clips[index];

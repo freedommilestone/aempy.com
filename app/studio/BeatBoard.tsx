@@ -8,7 +8,6 @@ import {
   beatForRange,
   endOf,
   formatClock,
-  removeBeat,
   rulerMarks,
   timelineDuration,
 } from "@/lib/beats";
@@ -223,30 +222,6 @@ export function BeatBoard({
             </div>
           </div>
 
-          {selected ? (
-            <div className="beat-detail">
-              <div className="kicker-row">
-                <div className="row-actions">
-                  <button
-                    className="button ghost"
-                    type="button"
-                    onClick={() =>
-                      persist({ ...project, currentBeatId: null })
-                    }
-                  >
-                    Close
-                  </button>
-                  <button
-                    className="button danger"
-                    type="button"
-                    onClick={() => persist(removeBeat(project, selected.id))}
-                  >
-                    Remove
-                  </button>
-                </div>
-              </div>
-            </div>
-          ) : null}
         </div>
       )}
     </section>

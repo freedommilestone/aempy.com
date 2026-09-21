@@ -65,6 +65,7 @@ export type Track = {
   scenes: Scene[];
   checks: TrackCheck[];
   files: string[];
+  fileNames: Record<string, string>;
   thumbs: Record<string, string>;
   audioId?: string;
   history: TrackVersion[];
@@ -144,6 +145,7 @@ function emptyTrack(kind: TrackKind, label?: string): Track {
     scenes: [],
     checks: [],
     files: [],
+    fileNames: {},
     thumbs: {},
     history: [],
   };
@@ -660,6 +662,7 @@ function normalizeTrack(track: Track): Track {
     scenes: track.scenes ?? [],
     checks: track.checks ?? [],
     files: track.files ?? [],
+    fileNames: track.fileNames ?? {},
     thumbs: track.thumbs ?? {},
     history: track.history ?? [],
     recommendations: track.recommendations ?? [],

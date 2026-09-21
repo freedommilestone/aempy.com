@@ -151,6 +151,10 @@ export function ProjectBoard({ id }: { id: string }) {
         }
         next = patchTrack(next, ensured.trackId, {
           files: [...(track?.files ?? []), ...scripts.map((file) => file.id)],
+          fileNames: {
+            ...(track?.fileNames ?? {}),
+            ...Object.fromEntries(scripts.map((file) => [file.id, file.name])),
+          },
           content: chunks.length
             ? [track?.content, ...chunks].filter(Boolean).join("\n\n")
             : track?.content,
@@ -231,19 +235,6 @@ export function ProjectBoard({ id }: { id: string }) {
       {view ? (
         <div className="board">
           <section className="panel">
-            <div className="kicker-row">
-              <input
-                className="track-label-input"
-                value={view.label}
-                onChange={(event) =>
-                  persist(
-                    patchTrack(active, view.id, { label: event.target.value }),
-                  )
-                }
-                aria-label="Track name"
-              />
-            </div>
-
             {view.kind === "thumbnail" && (
               <div className="scene-grid">
                 {["A", "B", "C"].map((letter) => (
@@ -267,28 +258,13 @@ export function ProjectBoard({ id }: { id: string }) {
             )}
 
             {view.kind === "script" && (
-              <div className="scene-grid">
+              <ul className="file-name-list">
                 {view.files.map((assetId, index) => (
-                  <FileSlot
-                    key={assetId}
-                    label={`Script file ${index + 1}`}
-                    accept=".txt,.md,.pdf,.doc,.docx,text/plain,application/pdf"
-                    kind="file"
-                    assetId={assetId}
-                    onAssigned={(nextId) =>
-                      persist(
-                        patchTrack(active, view.id, {
-                          files: nextId
-                            ? view.files.map((id) =>
-                                id === assetId ? nextId : id,
-                              )
-                            : view.files.filter((id) => id !== assetId),
-                        }),
-                      )
-                    }
-                  />
+                  <li key={assetId}>
+                    {view.fileNames[assetId] ?? `Script ${index + 1}`}
+                  </li>
                 ))}
-              </div>
+              </ul>
             )}
 
             {audio && (
