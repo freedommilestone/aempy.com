@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 
 const stories = [
   ["Fantasy", "fantasy"],
@@ -75,6 +75,33 @@ const capabilities = [
 export default function Landing() {
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const trackRef = useRef<HTMLDivElement>(null);
+  const sequenceRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const track = trackRef.current;
+    const sequence = sequenceRef.current;
+    if (!track || !sequence) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+    let offset = 0;
+    let last = performance.now();
+    let frame = 0;
+    const speed = 32;
+
+    const tick = (now: number) => {
+      const gap = Number.parseFloat(getComputedStyle(track).columnGap) || 0;
+      const loop = sequence.offsetWidth + gap;
+      const delta = Math.min(32, now - last);
+      last = now;
+      if (loop > gap) offset = (offset + (speed * delta) / 1000) % loop;
+      track.style.transform = `translate3d(${-offset}px, 0, 0)`;
+      frame = requestAnimationFrame(tick);
+    };
+
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, []);
 
   function joinWaitlist(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -110,7 +137,7 @@ export default function Landing() {
           <p className="eyebrow">AI STUDIO FOR STORYTELLERS</p>
           <h1>
             Turn Your Ideas<br />
-            Into <em>Animated Worlds.</em>
+            <span>Into <em>Animated Worlds.</em></span>
           </h1>
           <p className="hero-description">
             Aempy will help you develop, visualize, and create original anime,
@@ -167,8 +194,8 @@ export default function Landing() {
       </section>
 
       <section className="story-showcase" id="coming-soon" aria-label="Possible Aempy story styles">
-        <div className="story-track">
-          <div className="story-sequence">
+        <div className="story-track" ref={trackRef}>
+          <div className="story-sequence" ref={sequenceRef}>
             {stories.map(([name, style]) => (
               <article className="story-card" key={name}>
                 <div className="card-art">
