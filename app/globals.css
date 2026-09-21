@@ -272,6 +272,119 @@ h3 {
   color: var(--muted);
 }
 
+.waitlist-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.waitlist-container {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 6vw;
+}
+
+.waitlist-content {
+  max-width: 32rem;
+  width: 100%;
+  text-align: center;
+}
+
+.waitlist-logo {
+  font-size: 1.5rem;
+  letter-spacing: 0.08em;
+  text-transform: lowercase;
+  margin: 0 0 0.5rem;
+  font-weight: 600;
+}
+
+.waitlist-title {
+  margin: 1rem 0 1.5rem;
+  font-size: clamp(2rem, 6vw, 3.2rem);
+  line-height: 1;
+}
+
+.waitlist-description {
+  margin: 0 0 2.5rem;
+  font-size: 1.05rem;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.waitlist-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+.waitlist-form input {
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 1rem;
+  padding: 0.95rem 1.2rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--bg-elevated);
+  color: var(--ink);
+  text-align: center;
+  transition: border-color 0.2s;
+}
+
+.waitlist-form input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.waitlist-form input::placeholder {
+  color: var(--muted);
+}
+
+.waitlist-success {
+  padding: 2rem 1.5rem;
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+  background: var(--bg-elevated);
+}
+
+.waitlist-success p:first-child {
+  margin: 0 0 0.5rem;
+  font-size: 1.25rem;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.waitlist-success-message {
+  margin: 0;
+  color: var(--muted);
+}
+
+.waitlist-footer {
+  padding: 1.5rem 6vw 2.5rem;
+  border-top: 1px solid var(--line);
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.8rem;
+  color: var(--muted);
+  text-align: center;
+}
+
+.waitlist-footer p {
+  margin: 0;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
 @media (max-width: 960px) {
   nav a:not(.nav-cta) {
     display: none;
@@ -284,5 +397,9 @@ h3 {
 
   .hero {
     padding-top: 8vh;
+  }
+
+  .waitlist-container {
+    padding: 3rem 6vw;
   }
 }
