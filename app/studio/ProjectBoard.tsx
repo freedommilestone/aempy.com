@@ -242,12 +242,6 @@ export function ProjectBoard({ id }: { id: string }) {
         ))}
       </div>
 
-      {active.tracks.length === 0 ? (
-        <p className="empty">
-          Upload with the plug in the corner to add a script, stills, or clips.
-        </p>
-      ) : null}
-
       {view ? (
         <div className="board">
           <section className="panel">

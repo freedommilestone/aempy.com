@@ -1,22 +1,17 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { FileSlot } from "@/app/studio/FileSlot";
 import { getAsset } from "@/lib/assets";
 import {
   beatAtTime,
   beatById,
   beatForRange,
   endOf,
-  explodeBeat,
   formatClock,
   parseClockInput,
   patchBeat,
   removeBeat,
-  restoreTake,
   rulerMarks,
-  setBeatMedia,
-  splitIntoBeats,
   timelineDuration,
 } from "@/lib/beats";
 import type { Beat, Project } from "@/lib/projects";
@@ -305,129 +300,6 @@ export function BeatBoard({
                   aria-label="Section out point"
                 />
               </div>
-
-              <div className="kicker-row">
-                <label className="kicker" htmlFor="beat-prompt">
-                  Prompt
-                </label>
-                <button
-                  className="button ghost"
-                  type="button"
-                  onClick={async () => {
-                    await navigator.clipboard.writeText(selected.prompt);
-                  }}
-                >
-                  Copy
-                </button>
-              </div>
-              <textarea
-                id="beat-prompt"
-                className="prompt-editor"
-                value={selected.prompt}
-                onChange={(event) =>
-                  update(selected.id, { prompt: event.target.value })
-                }
-                placeholder="Restage this timestamp with a prompt…"
-              />
-
-              <details className="beat-more">
-                <summary>Script, still, clip, takes</summary>
-                <label className="kicker" htmlFor="beat-title">
-                  Label
-                </label>
-                <input
-                  id="beat-title"
-                  className="track-label-input"
-                  value={selected.title}
-                  onChange={(event) =>
-                    update(selected.id, { title: event.target.value })
-                  }
-                />
-                <div className="beat-media">
-                  <FileSlot
-                    label="Scene still"
-                    accept="image/*"
-                    kind="image"
-                    assetId={selected.stillFileId}
-                    onAssigned={(nextId) =>
-                      persist(
-                        setBeatMedia(project, selected.id, "still", nextId),
-                      )
-                    }
-                  />
-                  <FileSlot
-                    label="Scene clip"
-                    accept="video/*"
-                    kind="video"
-                    assetId={selected.clipFileId}
-                    onAssigned={(nextId) =>
-                      persist(
-                        setBeatMedia(project, selected.id, "clip", nextId),
-                      )
-                    }
-                  />
-                </div>
-                <label className="kicker" htmlFor="beat-script">
-                  Script
-                </label>
-                <textarea
-                  id="beat-script"
-                  className="result-editor"
-                  value={selected.script}
-                  onChange={(event) =>
-                    update(selected.id, { script: event.target.value })
-                  }
-                />
-                <label className="kicker" htmlFor="beat-vo">
-                  Voice over
-                </label>
-                <textarea
-                  id="beat-vo"
-                  className="brief-editor"
-                  value={selected.vo}
-                  onChange={(event) =>
-                    update(selected.id, { vo: event.target.value })
-                  }
-                />
-                {splitIntoBeats(selected.script).length > 1 ? (
-                  <button
-                    className="button ghost"
-                    type="button"
-                    onClick={() => persist(explodeBeat(project, selected.id))}
-                  >
-                    Split script into timestamps
-                  </button>
-                ) : null}
-                {(selected.stillTakes.length > 0 ||
-                  selected.clipTakes.length > 0) && (
-                  <div className="version-list">
-                    <p className="kicker">Takes</p>
-                    <ul>
-                      {[...selected.stillTakes, ...selected.clipTakes]
-                        .sort((a, b) => (a.at < b.at ? 1 : -1))
-                        .map((take) => (
-                          <li key={take.id}>
-                            <span>
-                              {take.kind} · {new Date(take.at).toLocaleString()}{" "}
-                              · {take.prompt.slice(0, 60) || "No prompt"}
-                            </span>
-                            <button
-                              className="button ghost"
-                              type="button"
-                              onClick={() =>
-                                persist(
-                                  restoreTake(project, selected.id, take.id),
-                                )
-                              }
-                            >
-                              Restore
-                            </button>
-                          </li>
-                        ))}
-                    </ul>
-                  </div>
-                )}
-              </details>
             </div>
           ) : null}
         </div>
