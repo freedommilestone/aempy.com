@@ -204,7 +204,7 @@
 .capability-row {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  margin-top: 0;
+  margin-top: 36px;
   max-width: 740px;
   padding: 5px 0 10px;
 }
@@ -221,47 +221,57 @@
 .capability-icon { color: #8258ff; font-size: 32px; font-weight: 300; line-height: 1; }
 .capability p { color: #f3f1f4; font-size: 12px; font-weight: 600; line-height: 1.1; margin: 0; }
 
-.story-showcase { overflow: hidden; padding: 7px 0 0; position: relative; z-index: 1; }
+.story-showcase {
+  background: linear-gradient(180deg, rgba(13, 25, 48, .28), rgba(5, 12, 27, .72));
+  overflow: hidden;
+  padding: 7px 0 10px;
+  position: relative;
+  z-index: 1;
+}
 .story-showcase::before, .story-showcase::after {
-  content: ""; inset-block: 0; pointer-events: none; position: absolute; width: 55px; z-index: 2;
+  content: ""; inset-block: 0; pointer-events: none; position: absolute; width: 72px; z-index: 2;
 }
 .story-showcase::before { background: linear-gradient(90deg, var(--night), transparent); left: 0; }
 .story-showcase::after { background: linear-gradient(270deg, var(--night), transparent); right: 0; }
-.story-track { animation: slide 55s linear infinite; display: flex; gap: 6px; width: max-content; }
-.story-showcase:hover .story-track { animation-play-state: paused; }
+.story-track {
+  animation: story-loop 44s linear infinite;
+  display: flex;
+  gap: 6px;
+  width: max-content;
+  will-change: transform;
+}
+.story-sequence { display: flex; flex: none; gap: 6px; }
 
-.story-card { flex: 0 0 86px; margin: 0; }
+.story-card { flex: 0 0 88px; margin: 0; width: 88px; }
 .card-art {
   border: 1px solid rgba(174, 164, 228, .45);
-  border-radius: 3px;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, .37);
-  height: 125px;
+  border-radius: 4px;
+  box-shadow: 0 7px 20px rgba(0, 0, 0, .48);
+  height: 128px;
   overflow: hidden;
   position: relative;
-  transition: transform .22s ease;
+  background-image: url("/images/aempy-reference.jpg");
+  background-position: var(--crop-x) -447px;
+  background-repeat: no-repeat;
+  background-size: 1024px 683px;
 }
-.story-card:hover .card-art { transform: translateY(-5px) scale(1.04); }
-.story-card p { color: #dddbe5; font-size: 9px; margin: 5px 0 0; text-align: center; }
-.card-art::after {
-  background: linear-gradient(transparent 34%, rgba(2, 6, 20, .5)), url("/images/aempy-reference.jpg");
-  background-position: center, 76% 68%;
-  background-size: cover, auto 215px;
-  content: "";
-  inset: 0;
-  mix-blend-mode: screen;
-  opacity: .65;
-  position: absolute;
+.story-card p {
+  color: #e5e2ec;
+  font-size: 9px;
+  line-height: 1;
+  margin: 7px 0 0;
+  text-align: center;
 }
-.fantasy .card-art { background: linear-gradient(145deg, #cadcf1 0 32%, #5b7191 33% 58%, #102046 59%); }
-.scifi .card-art { background: radial-gradient(circle at 70% 23%, #bfd0ff 0 15%, transparent 16%), linear-gradient(155deg, #07192d, #376a99 52%, #071020); }
-.slice .card-art { background: linear-gradient(140deg, #f4ca9d, #a3694b 48%, #4a3030); }
-.action .card-art { background: radial-gradient(circle at 50% 32%, #ec8267, transparent 20%), linear-gradient(135deg, #122b4f, #9f3d34 48%, #1e172c); }
-.cozy .card-art { background: radial-gradient(circle at 48% 35%, #e8a55e, transparent 25%), linear-gradient(145deg, #2e1721, #8d5034 54%, #241923); }
-.drama .card-art { background: radial-gradient(ellipse at 54% 30%, #8ca8c8, transparent 17%), linear-gradient(130deg, #162945, #4d688a 50%, #15101f); }
-.adventure .card-art { background: linear-gradient(145deg, #c0d6ed, #7fa1be 52%, #1d3049); }
-.cyberpunk .card-art { background: linear-gradient(145deg, #210f52, #df3bdc 45%, #102c81 78%, #030611); }
-.historical .card-art { background: linear-gradient(145deg, #abc3dc, #b99372 45%, #3d4d4c); }
-.comedy .card-art { background: radial-gradient(circle at 53% 35%, #ffd998, transparent 22%), linear-gradient(135deg, #f5b36f, #e46f65 57%, #442f5a); }
+.fantasy { --crop-x: -20px; }
+.scifi { --crop-x: -103px; }
+.slice { --crop-x: -187px; }
+.action { --crop-x: -277px; }
+.cozy { --crop-x: -376px; }
+.drama { --crop-x: -476px; }
+.adventure { --crop-x: -580px; }
+.cyberpunk { --crop-x: -683px; }
+.historical { --crop-x: -782px; }
+.comedy { --crop-x: -871px; }
 
 .aempy-landing footer {
   align-items: center;
@@ -275,7 +285,7 @@
 .aempy-landing footer span { background: rgba(161, 147, 220, .55); height: 1px; width: 32px; }
 .aempy-landing footer p { color: #d2cedc; font-size: 11px; letter-spacing: .8px; margin: 0; }
 
-@keyframes slide { to { transform: translateX(calc(-50% - 30px)); } }
+@keyframes story-loop { to { transform: translateX(calc(-50% - 3px)); } }
 
 @media (prefers-reduced-motion: reduce) { .story-track { animation: none; } }
 
@@ -298,8 +308,6 @@
   .hero-description { font-size: 13px; }
   .waitlist-form { flex-direction: column; }
   .waitlist-form button { height: 42px; }
-  .story-card { flex-basis: 74px; }
-  .card-art { height: 110px; }
   .aempy-landing footer { gap: 10px; padding-top: 28px; }
   .aempy-landing footer p { font-size: 9px; letter-spacing: .3px; }
 }

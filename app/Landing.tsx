@@ -110,12 +110,22 @@ export default function Landing() {
 
       <section className="story-showcase" id="coming-soon" aria-label="Possible Aempy story styles">
         <div className="story-track">
-          {[...stories, ...stories].map(([name, style], index) => (
-            <article className={`story-card ${style}`} key={`${name}-${index}`}>
-              <div className="card-art" aria-hidden="true" />
-              <p>{name}</p>
-            </article>
-          ))}
+          <div className="story-sequence">
+            {stories.map(([name, style]) => (
+              <article className={`story-card ${style}`} key={name}>
+                <div className="card-art" aria-hidden="true" />
+                <p>{name}</p>
+              </article>
+            ))}
+          </div>
+          <div className="story-sequence" aria-hidden="true">
+            {stories.map(([name, style]) => (
+              <article className={`story-card ${style}`} key={name}>
+                <div className="card-art" />
+                <p>{name}</p>
+              </article>
+            ))}
+          </div>
         </div>
       </section>
 
