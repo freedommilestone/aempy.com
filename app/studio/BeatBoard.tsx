@@ -8,13 +8,11 @@ import {
   beatForRange,
   endOf,
   formatClock,
-  parseClockInput,
-  patchBeat,
   removeBeat,
   rulerMarks,
   timelineDuration,
 } from "@/lib/beats";
-import type { Beat, Project } from "@/lib/projects";
+import type { Project } from "@/lib/projects";
 
 function FrameThumb({ stillId, clipId }: { stillId?: string; clipId?: string }) {
   const [url, setUrl] = useState<string | null>(null);
@@ -115,10 +113,6 @@ export function BeatBoard({
       setRange({ start: lo, end: Math.max(lo + 0.2, hi) });
     }
     if (beat) persist({ ...project, currentBeatId: beat.id });
-  }
-
-  function update(beatId: string, patch: Partial<Beat>) {
-    persist(patchBeat(project, beatId, patch));
   }
 
   useEffect(() => {
@@ -260,45 +254,6 @@ export function BeatBoard({
                     Remove
                   </button>
                 </div>
-              </div>
-
-              <div className="nle-times">
-                <label className="kicker" htmlFor="beat-in">
-                  In
-                </label>
-                <input
-                  id="beat-in"
-                  className="track-label-input"
-                  value={formatClock(viewRange?.start ?? selected.startSec)}
-                  onChange={(event) => {
-                    const next = parseClockInput(event.target.value);
-                    if (next == null) return;
-                    setRange({
-                      start: next,
-                      end: viewRange?.end ?? endOf(selected),
-                    });
-                    update(selected.id, { startSec: next });
-                  }}
-                  aria-label="Section in point"
-                />
-                <label className="kicker" htmlFor="beat-out">
-                  Out
-                </label>
-                <input
-                  id="beat-out"
-                  className="track-label-input"
-                  value={formatClock(viewRange?.end ?? endOf(selected))}
-                  onChange={(event) => {
-                    const next = parseClockInput(event.target.value);
-                    if (next == null) return;
-                    setRange({
-                      start: viewRange?.start ?? selected.startSec,
-                      end: next,
-                    });
-                    update(selected.id, { endSec: next });
-                  }}
-                  aria-label="Section out point"
-                />
               </div>
             </div>
           ) : null}
