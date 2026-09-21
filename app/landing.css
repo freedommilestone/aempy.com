@@ -252,12 +252,18 @@
   border: 1px solid rgba(174, 164, 228, .45);
   border-radius: 5px;
   box-shadow: 0 7px 20px rgba(0, 0, 0, .48);
+  line-height: 0;
   overflow: hidden;
   position: relative;
-  background-image: url("/images/aempy-reference.jpg");
-  background-position: var(--crop-x) var(--crop-y, 80.7%);
-  background-repeat: no-repeat;
-  background-size: 1163.64% auto;
+}
+.card-art img {
+  display: block;
+  height: 100%;
+  inset: 0;
+  object-fit: cover;
+  object-position: center;
+  position: absolute;
+  width: 100%;
 }
 .story-card p {
   color: #e5e2ec;
@@ -266,27 +272,6 @@
   margin: 8px 0 0;
   text-align: center;
 }
-.fantasy { --crop-x: 2.14%; }
-.fantasy .card-art::after {
-  backdrop-filter: blur(7px);
-  background: linear-gradient(90deg, rgba(9, 17, 34, .98), rgba(9, 17, 34, .82));
-  border-radius: 0 50% 50% 0;
-  content: "";
-  height: 34%;
-  left: 0;
-  position: absolute;
-  top: 34%;
-  width: 23%;
-}
-.scifi { --crop-x: 11%; }
-.slice { --crop-x: 19.98%; }
-.action { --crop-x: 29.59%; }
-.cozy { --crop-x: 40.17%; }
-.drama { --crop-x: 50.85%; }
-.adventure { --crop-x: 61.97%; }
-.cyberpunk { --crop-x: 72.97%; }
-.historical { --crop-x: 83.55%; }
-.comedy { --crop-x: 93.06%; }
 
 .aempy-landing footer {
   align-items: center;

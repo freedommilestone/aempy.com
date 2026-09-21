@@ -112,16 +112,20 @@ export default function Landing() {
         <div className="story-track">
           <div className="story-sequence">
             {stories.map(([name, style]) => (
-              <article className={`story-card ${style}`} key={name}>
-                <div className="card-art" aria-hidden="true" />
+              <article className="story-card" key={name}>
+                <div className="card-art">
+                  <img src={`/images/stories/${style}.jpg`} alt="" />
+                </div>
                 <p>{name}</p>
               </article>
             ))}
           </div>
           <div className="story-sequence" aria-hidden="true">
             {stories.map(([name, style]) => (
-              <article className={`story-card ${style}`} key={name}>
-                <div className="card-art" />
+              <article className="story-card" key={name}>
+                <div className="card-art">
+                  <img src={`/images/stories/${style}.jpg`} alt="" />
+                </div>
                 <p>{name}</p>
               </article>
             ))}
