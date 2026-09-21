@@ -138,7 +138,7 @@
 }
 
 .studio {
-  padding: 2.5rem 5vw 4rem;
+  padding: 1.25rem 5vw 5.5rem;
   max-width: 1120px;
   margin: 0 auto;
 }
@@ -273,7 +273,45 @@ button.button.danger {
 }
 
 .beat-studio {
-  margin: 0 0 1.5rem;
+  margin: 0 0 1.75rem;
+}
+
+.plug-fab {
+  position: fixed;
+  right: 1.35rem;
+  bottom: 1.35rem;
+  z-index: 40;
+}
+
+.plug-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.plug-button {
+  appearance: none;
+  width: 3.4rem;
+  height: 3.4rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: 1.55rem;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+}
+
+.plug-button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.plug-fab.is-over .plug-button {
+  outline: 2px solid var(--ink);
 }
 
 .beat-layout {
@@ -436,8 +474,8 @@ button.button.danger {
 .board-title-input {
   width: 100%;
   font-family: "Iowan Old Style", Palatino, Georgia, serif;
-  font-size: 2rem;
-  margin: 0.4rem 0 0.8rem;
+  font-size: 1.35rem;
+  margin: 0.35rem 0 1.1rem;
   background: transparent;
   border: 0;
   padding: 0;

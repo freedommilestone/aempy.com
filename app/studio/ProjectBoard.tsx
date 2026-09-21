@@ -4,10 +4,16 @@ import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 import { FileSlot } from "@/app/studio/FileSlot";
 import { BeatBoard } from "@/app/studio/BeatBoard";
-import { getAsset } from "@/lib/assets";
+import { PlugFab } from "@/app/studio/PlugFab";
+import { getAsset, putAsset } from "@/lib/assets";
 import { alignBeats } from "@/lib/beats";
 import { downloadProjectBackup } from "@/lib/backup";
 import type { ChatResult } from "@/lib/chat";
+import {
+  classifyIngestFile,
+  ingestLimitFor,
+  sortIngestFiles,
+} from "@/lib/ingest";
 import {
   TRACK_KINDS,
   addTrack,
@@ -16,6 +22,7 @@ import {
   moveTrack,
   patchTrack,
   removeTrack,
+  uid,
   type Project,
   type TrackKind,
   upsertProject,
@@ -84,6 +91,7 @@ export function ProjectBoard({ id }: { id: string }) {
   const [addKind, setAddKind] = useState<TrackKind>("title");
   const [chatDraft, setChatDraft] = useState("");
   const [chatBusy, setChatBusy] = useState(false);
+  const [ingestBusy, setIngestBusy] = useState(false);
   const [notice, setNotice] = useState("");
   const [ready, setReady] = useState(false);
 
@@ -130,58 +138,104 @@ export function ProjectBoard({ id }: { id: string }) {
     setNotice("Version saved for this track.");
   }
 
-  async function ingestScript(files: { id: string; name: string }[]) {
-    const ensured = ensureTrack(active, "script");
-    let next = ensured.project;
-    const track = trackById(next, ensured.trackId);
-    if (!track) return;
-    const text = await textFromAsset(files[0].id, files[0].name);
-    next = patchTrack(next, ensured.trackId, {
-      files: [...track.files, ...files.map((file) => file.id)],
-      content: text.trim() ? text : track.content,
-    });
-    persist(alignBeats({ ...next, currentTrackId: ensured.trackId }));
-    setNotice("Script added to this project.");
-  }
-
-  function ingestPictures(files: { id: string; name: string }[]) {
-    const pdfs = files.filter((file) => /\.pdf$/i.test(file.name));
-    const images = files.filter((file) => !/\.pdf$/i.test(file.name));
-    let next = active;
-    if (pdfs.length) {
-      const board = ensureTrack(next, "storyboard");
-      next = board.project;
-      const track = trackById(next, board.trackId);
-      next = patchTrack(next, board.trackId, {
-        files: [...(track?.files ?? []), ...pdfs.map((file) => file.id)],
-      });
-      next = { ...next, currentTrackId: board.trackId };
+  async function ingestDropped(files: File[]) {
+    const sorted = sortIngestFiles(files);
+    const usable = sorted.filter((file) => classifyIngestFile(file) !== "skip");
+    if (!usable.length) {
+      setNotice("Nothing to plug in from that drop.");
+      return;
     }
-    if (images.length) {
-      const kind = pictureKind(next);
-      const slot = ensureTrack(next, kind);
-      next = attachFilesToScenes(
-        slot.project,
-        slot.trackId,
-        images.map((file) => ({ id: file.id, title: stemName(file.name) })),
+    const tooBig = usable.find(
+      (file) => file.size > ingestLimitFor(classifyIngestFile(file)),
+    );
+    if (tooBig) {
+      const mb = Math.round(
+        ingestLimitFor(classifyIngestFile(tooBig)) / (1024 * 1024),
       );
+      setNotice(`Keep ${tooBig.name} under ${mb} MB on this device.`);
+      return;
     }
-    persist(alignBeats(next));
-    setNotice("Storyboard or scene images added to this project.");
-  }
-
-  function ingestClips(files: { id: string; name: string }[]) {
-    const slot = ensureTrack(active, "videos");
-    persist(
-      alignBeats(
-        attachFilesToScenes(
+    setIngestBusy(true);
+    try {
+      let next = active;
+      const scripts: { id: string; name: string }[] = [];
+      const pictures: { id: string; name: string }[] = [];
+      const clips: { id: string; name: string }[] = [];
+      const audio: { id: string; name: string }[] = [];
+      for (const file of usable) {
+        const id = uid();
+        await putAsset(id, file);
+        const saved = { id, name: file.name };
+        const kind = classifyIngestFile(file);
+        if (kind === "script") scripts.push(saved);
+        else if (kind === "picture") pictures.push(saved);
+        else if (kind === "clip") clips.push(saved);
+        else if (kind === "audio") audio.push(saved);
+      }
+      if (scripts.length) {
+        const ensured = ensureTrack(next, "script");
+        next = ensured.project;
+        const track = trackById(next, ensured.trackId);
+        const chunks: string[] = [];
+        for (const file of scripts) {
+          const text = await textFromAsset(file.id, file.name);
+          if (text.trim()) chunks.push(text.trim());
+        }
+        next = patchTrack(next, ensured.trackId, {
+          files: [...(track?.files ?? []), ...scripts.map((file) => file.id)],
+          content: chunks.length
+            ? [track?.content, ...chunks].filter(Boolean).join("\n\n")
+            : track?.content,
+        });
+      }
+      if (pictures.length) {
+        const pdfs = pictures.filter((file) => /\.pdf$/i.test(file.name));
+        const images = pictures.filter((file) => !/\.pdf$/i.test(file.name));
+        if (pdfs.length) {
+          const board = ensureTrack(next, "storyboard");
+          next = board.project;
+          const track = trackById(next, board.trackId);
+          next = patchTrack(next, board.trackId, {
+            files: [...(track?.files ?? []), ...pdfs.map((file) => file.id)],
+          });
+        }
+        if (images.length) {
+          const kind = pictureKind(next);
+          const slot = ensureTrack(next, kind);
+          next = attachFilesToScenes(
+            slot.project,
+            slot.trackId,
+            images.map((file) => ({ id: file.id, title: stemName(file.name) })),
+          );
+        }
+      }
+      if (clips.length) {
+        const slot = ensureTrack(next, "videos");
+        next = attachFilesToScenes(
           slot.project,
           slot.trackId,
-          files.map((file) => ({ id: file.id, title: stemName(file.name) })),
-        ),
-      ),
-    );
-    setNotice("Clips added to this project.");
+          clips.map((file) => ({ id: file.id, title: stemName(file.name) })),
+        );
+      }
+      if (audio.length) {
+        const slot = ensureTrack(next, "sound");
+        const track = trackById(slot.project, slot.trackId);
+        next = patchTrack(slot.project, slot.trackId, {
+          audioId: audio[0].id,
+          files: [...(track?.files ?? []), ...audio.map((file) => file.id)],
+        });
+      }
+      persist(alignBeats(next));
+      const bits = [
+        scripts.length ? `${scripts.length} script` : "",
+        pictures.length ? `${pictures.length} still` : "",
+        clips.length ? `${clips.length} clip` : "",
+        audio.length ? `${audio.length} audio` : "",
+      ].filter(Boolean);
+      setNotice(`Plugged in ${bits.join(", ")}. Sorted onto the timeline.`);
+    } finally {
+      setIngestBusy(false);
+    }
   }
 
   async function sendChat(event: FormEvent) {
@@ -241,6 +295,9 @@ export function ProjectBoard({ id }: { id: string }) {
 
   return (
     <div className="studio">
+      <BeatBoard project={active} persist={persist} />
+      {notice ? <p className="notice">{notice}</p> : null}
+
       <div className="kicker-row">
         <Link className="meta" href="/studio">
           ← New project
@@ -264,50 +321,6 @@ export function ProjectBoard({ id }: { id: string }) {
         onChange={(event) => persist({ ...active, title: event.target.value })}
         aria-label="Project title"
       />
-      <label className="kicker" htmlFor="brief">
-        Brief
-      </label>
-      <textarea
-        id="brief"
-        className="brief-editor"
-        value={active.brief}
-        onChange={(event) => persist({ ...active, brief: event.target.value })}
-        placeholder="What is this video? Optional — used when you add a YouTube set or a new track."
-      />
-      <p className="studio-lede">
-        Drop in the script, storyboard or stills, and clips. Agents can generate
-        against those files, and you can still see every prompt.
-      </p>
-      {notice ? <p className="notice">{notice}</p> : null}
-
-      <div className="ingest">
-        <FileSlot
-          label="Script"
-          accept=".txt,.md,.pdf,.doc,.docx,text/plain,application/pdf"
-          kind="file"
-          multiple
-          onAssigned={() => undefined}
-          onAssignedMany={ingestScript}
-        />
-        <FileSlot
-          label="Storyboard or scene images"
-          accept="image/*,application/pdf"
-          kind="image"
-          multiple
-          onAssigned={() => undefined}
-          onAssignedMany={ingestPictures}
-        />
-        <FileSlot
-          label="Video clips"
-          accept="video/*"
-          kind="video"
-          multiple
-          onAssigned={() => undefined}
-          onAssignedMany={ingestClips}
-        />
-      </div>
-
-      <BeatBoard project={active} persist={persist} />
 
       <div className="track-bar">
         {active.tracks.map((track, index) => (
@@ -353,8 +366,8 @@ export function ProjectBoard({ id }: { id: string }) {
 
       {active.tracks.length === 0 ? (
         <p className="empty">
-          Upload a script, stills, or clips above — or add a track if you want
-          the agent to generate first.
+          Upload with the plug in the corner — or add a track if you want the
+          agent to generate first.
         </p>
       ) : null}
 
@@ -750,6 +763,8 @@ export function ProjectBoard({ id }: { id: string }) {
           </aside>
         </div>
       ) : null}
+
+      <PlugFab busy={ingestBusy} onFiles={ingestDropped} />
     </div>
   );
 }

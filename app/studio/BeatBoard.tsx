@@ -216,7 +216,8 @@ export function BeatBoard({
 
       {project.beats.length === 0 ? (
         <p className="empty">
-          Upload a script, stills, or clips, or add a timestamp to start staging.
+          Use the plug in the corner to drop a script, a folder of stills, or
+          clips. Add a timestamp if you want to grade a section first.
         </p>
       ) : (
         <div className="beat-layout">
