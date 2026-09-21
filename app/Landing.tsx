@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 
 const stories = [
   ["Fantasy", "fantasy"],
@@ -22,9 +22,62 @@ const capabilities = [
   ["☷", "Edit", "and Polish"],
 ] as const;
 
+function StoryCard({ name, style }: { name: string; style: string }) {
+  return (
+    <article className="story-card">
+      <div className="story-card-tilt">
+        <div className="card-art">
+          <img src={`/images/stories/${style}.jpg`} alt="" />
+        </div>
+        <p>{name}</p>
+      </div>
+    </article>
+  );
+}
+
 export default function Landing() {
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const showcaseRef = useRef<HTMLElement>(null);
+  const trackRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const showcase = showcaseRef.current;
+    const track = trackRef.current;
+    if (!showcase || !track) return;
+
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    let frame = 0;
+    let offset = 0;
+
+    const render = () => {
+      const sequence = track.querySelector<HTMLElement>(".story-sequence");
+      const loopWidth = (sequence?.offsetWidth ?? 0) + 18;
+      if (!reducedMotion.matches && loopWidth > 18) {
+        offset = (offset + 0.45) % loopWidth;
+        track.style.transform = `translate3d(${-offset}px, 0, 0)`;
+      }
+
+      const showcaseRect = showcase.getBoundingClientRect();
+      const center = showcaseRect.left + showcaseRect.width / 2;
+      track.querySelectorAll<HTMLElement>(".story-card").forEach((card) => {
+        const tilt = card.querySelector<HTMLElement>(".story-card-tilt");
+        if (!tilt) return;
+        const visualCenter = showcaseRect.left + card.offsetLeft + card.offsetWidth / 2 - offset;
+        const distance = (visualCenter - center) / card.offsetWidth;
+        const limited = Math.max(-4.5, Math.min(4.5, distance));
+        const depth = Math.abs(limited);
+        tilt.style.transform = `translateY(${-depth * depth * 5}px) translateZ(${-depth * 42}px) rotateY(${limited * -16}deg) scale(${1 - Math.min(depth, 2.4) * 0.045})`;
+        tilt.style.opacity = `${Math.max(0.45, 1 - Math.max(0, depth - 2.6) * 0.22)}`;
+        card.style.zIndex = `${100 - Math.round(depth * 12)}`;
+      });
+
+      frame = requestAnimationFrame(render);
+    };
+
+    frame = requestAnimationFrame(render);
+    return () => cancelAnimationFrame(frame);
+  }, []);
 
   function joinWaitlist(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -108,27 +161,19 @@ export default function Landing() {
         ))}
       </section>
 
-      <section className="story-showcase" id="coming-soon" aria-label="Possible Aempy story styles">
-        <div className="story-track">
-          <div className="story-sequence">
-            {stories.map(([name, style]) => (
-              <article className="story-card" key={name}>
-                <div className="card-art">
-                  <img src={`/images/stories/${style}.jpg`} alt="" />
-                </div>
-                <p>{name}</p>
-              </article>
-            ))}
-          </div>
-          <div className="story-sequence" aria-hidden="true">
-            {stories.map(([name, style]) => (
-              <article className="story-card" key={name}>
-                <div className="card-art">
-                  <img src={`/images/stories/${style}.jpg`} alt="" />
-                </div>
-                <p>{name}</p>
-              </article>
-            ))}
+      <section className="story-showcase" id="coming-soon" aria-label="Possible Aempy story styles" ref={showcaseRef}>
+        <div className="story-stage">
+          <div className="story-track" ref={trackRef}>
+            <div className="story-sequence">
+              {stories.map(([name, style]) => (
+                <StoryCard name={name} style={style} key={name} />
+              ))}
+            </div>
+            <div className="story-sequence" aria-hidden="true">
+              {stories.map(([name, style]) => (
+                <StoryCard name={name} style={style} key={name} />
+              ))}
+            </div>
           </div>
         </div>
       </section>
