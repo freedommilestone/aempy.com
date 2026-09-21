@@ -1,12 +1,9 @@
 "use client";
 
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { FileSlot } from "@/app/studio/FileSlot";
 import { getAsset } from "@/lib/assets";
-import type { ChatResult } from "@/lib/chat";
 import {
-  applyBeatRec,
-  autoRecommendations,
   beatAtTime,
   beatById,
   beatForRange,
@@ -18,12 +15,10 @@ import {
   removeBeat,
   restoreTake,
   rulerMarks,
-  savePromptTake,
   setBeatMedia,
   splitIntoBeats,
   timelineDuration,
 } from "@/lib/beats";
-import { appendChat } from "@/lib/studioState";
 import type { Beat, Project } from "@/lib/projects";
 
 function FrameThumb({ stillId, clipId }: { stillId?: string; clipId?: string }) {
@@ -64,8 +59,6 @@ export function BeatBoard({
   project: Project;
   persist: (next: Project) => void;
 }) {
-  const [draft, setDraft] = useState("");
-  const [busy, setBusy] = useState(false);
   const [range, setRange] = useState<{ start: number; end: number } | null>(
     null,
   );
@@ -140,60 +133,6 @@ export function BeatBoard({
       return { start: selected.startSec, end: endOf(selected) };
     });
   }, [selected?.id, selected?.startSec, selected?.endSec]);
-
-  async function sendToBeat(event: FormEvent) {
-    event.preventDefault();
-    const text = draft.trim();
-    if (!text || !selected || busy) return;
-    setBusy(true);
-    setDraft("");
-    const withUser = appendChat(project, {
-      role: "user",
-      text,
-      trackId: "",
-      beatId: selected.id,
-    });
-    persist(withUser);
-    try {
-      const response = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          track: selected.title,
-          prompt: selected.prompt,
-          content: `Section ${formatClock(viewRange?.start ?? selected.startSec)}–${formatClock(viewRange?.end ?? endOf(selected))}\n${selected.script}\n\n${selected.vo}`,
-          message: text,
-        }),
-      });
-      const data = (await response.json()) as ChatResult;
-      let next = savePromptTake(withUser, selected.id);
-      next = patchBeat(next, selected.id, {
-        prompt: data.prompt,
-        script: selected.script,
-      });
-      next = appendChat(next, {
-        role: "assistant",
-        text: data.reply,
-        trackId: "",
-        beatId: selected.id,
-      });
-      persist(next);
-    } catch {
-      persist(
-        appendChat(withUser, {
-          role: "assistant",
-          text: "Could not reach the agent. Your note is still on this timestamp.",
-          trackId: "",
-          beatId: selected.id,
-        }),
-      );
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  const chat = project.chat.filter((message) => message.beatId === selected?.id);
-  const recs = selected ? autoRecommendations(selected) : [];
 
   return (
     <section className="beat-studio">
@@ -390,56 +329,6 @@ export function BeatBoard({
                 }
                 placeholder="Restage this timestamp with a prompt…"
               />
-
-              <h3>Auto recommendations</h3>
-              <ul className="recs">
-                {recs.map((item) => (
-                  <li key={item}>
-                    {item}
-                    <button
-                      className="button ghost"
-                      type="button"
-                      onClick={() =>
-                        persist(applyBeatRec(project, selected.id, item))
-                      }
-                    >
-                      Use prompt
-                    </button>
-                  </li>
-                ))}
-              </ul>
-
-              <h3>Ask the agent</h3>
-              <div className="chat-log">
-                {chat.length === 0 ? (
-                  <p className="empty">
-                    Describe the change. The agent rewrites the prompt for this
-                    timestamp.
-                  </p>
-                ) : (
-                  chat.map((message) => (
-                    <article
-                      className={`chat-msg is-${message.role}`}
-                      key={message.id}
-                    >
-                      <span className="kicker">
-                        {message.role === "user" ? "You" : "Studio"}
-                      </span>
-                      <p>{message.text}</p>
-                    </article>
-                  ))
-                )}
-              </div>
-              <form className="chat-form" onSubmit={sendToBeat}>
-                <textarea
-                  value={draft}
-                  onChange={(event) => setDraft(event.target.value)}
-                  placeholder="Colder diner, slower push-in, face readable on a phone…"
-                />
-                <button className="button primary" type="submit" disabled={busy}>
-                  {busy ? "Writing prompt…" : "Rewrite prompt with AI"}
-                </button>
-              </form>
 
               <details className="beat-more">
                 <summary>Script, still, clip, takes</summary>

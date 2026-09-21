@@ -7,7 +7,6 @@ import { BeatBoard } from "@/app/studio/BeatBoard";
 import { PlugFab } from "@/app/studio/PlugFab";
 import { getAsset, putAsset } from "@/lib/assets";
 import { alignBeats } from "@/lib/beats";
-import { downloadProjectBackup } from "@/lib/backup";
 import type { ChatResult } from "@/lib/chat";
 import {
   classifyIngestFile,
@@ -15,9 +14,6 @@ import {
   sortIngestFiles,
 } from "@/lib/ingest";
 import {
-  TRACK_KINDS,
-  addTrack,
-  addYoutubeSet,
   ensureTrack,
   moveTrack,
   patchTrack,
@@ -88,7 +84,6 @@ function pictureKind(project: Project): TrackKind {
 
 export function ProjectBoard({ id }: { id: string }) {
   const [project, setProject] = useState<Project | null>(null);
-  const [addKind, setAddKind] = useState<TrackKind>("title");
   const [chatDraft, setChatDraft] = useState("");
   const [chatBusy, setChatBusy] = useState(false);
   const [ingestBusy, setIngestBusy] = useState(false);
@@ -300,23 +295,6 @@ export function ProjectBoard({ id }: { id: string }) {
       <BeatBoard project={active} persist={persist} />
       {notice ? <p className="notice">{notice}</p> : null}
 
-      <div className="kicker-row">
-        <Link className="meta" href="/studio">
-          ← New project
-        </Link>
-        <button
-          className="button ghost"
-          type="button"
-          onClick={async () => {
-            await downloadProjectBackup(active);
-            setNotice(
-              "Backup downloaded. Import it from the studio home on another device.",
-            );
-          }}
-        >
-          Download backup
-        </button>
-      </div>
       <input
         className="board-title-input"
         value={active.title}
@@ -338,38 +316,9 @@ export function ProjectBoard({ id }: { id: string }) {
         ))}
       </div>
 
-      <div className="add-track">
-        <select
-          value={addKind}
-          onChange={(event) => setAddKind(event.target.value as TrackKind)}
-          aria-label="Track type"
-        >
-          {TRACK_KINDS.map((kind) => (
-            <option key={kind.id} value={kind.id}>
-              {kind.label}
-            </option>
-          ))}
-        </select>
-        <button
-          className="button primary"
-          type="button"
-          onClick={() => persist(addTrack(active, addKind))}
-        >
-          Add track
-        </button>
-        <button
-          className="button ghost"
-          type="button"
-          onClick={() => persist(addYoutubeSet(active))}
-        >
-          Add YouTube set
-        </button>
-      </div>
-
       {active.tracks.length === 0 ? (
         <p className="empty">
-          Upload with the plug in the corner — or add a track if you want the
-          agent to generate first.
+          Upload with the plug in the corner to add a script, stills, or clips.
         </p>
       ) : null}
 
