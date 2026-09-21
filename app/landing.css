@@ -249,7 +249,6 @@
 }
 .card-art {
   aspect-ratio: 88 / 128;
-  border: 1px solid rgba(174, 164, 228, .45);
   border-radius: 5px;
   box-shadow: 0 7px 20px rgba(0, 0, 0, .48);
   line-height: 0;
