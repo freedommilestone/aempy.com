@@ -175,30 +175,19 @@
 
 .hero-world {
   background-image:
-    linear-gradient(90deg, var(--night) 0%, rgba(3, 11, 25, .72) 14%, transparent 40%),
+    linear-gradient(90deg, var(--night) 0%, rgba(3, 11, 25, .98) 25%, rgba(3, 11, 25, .72) 40%, transparent 62%),
     linear-gradient(0deg, rgba(3, 11, 25, .2), transparent 48%),
     url("/images/aempy-reference.jpg");
-  background-position: left center, center, right top;
+  background-position: left center, center, right 15%;
   background-repeat: no-repeat;
-  background-size: 100% 100%, 100% 100%, auto 105%;
+  background-size: 100% 100%, 100% 100%, 188% 213%;
   margin: -5px -48px 0 -108px;
   min-width: 0;
   position: relative;
 }
 
 .hero-script {
-  color: #f3e9ff;
-  font-family: "Brush Script MT", cursive;
-  font-size: 25px;
-  font-style: italic;
-  line-height: .95;
-  margin: 0;
-  position: absolute;
-  right: 35px;
-  text-align: center;
-  text-shadow: 0 2px 8px #070918;
-  top: 37px;
-  transform: rotate(-8deg);
+  display: none;
 }
 
 .capability-row {
@@ -234,44 +223,59 @@
 .story-showcase::before { background: linear-gradient(90deg, var(--night), transparent); left: 0; }
 .story-showcase::after { background: linear-gradient(270deg, var(--night), transparent); right: 0; }
 .story-track {
-  animation: story-loop 44s linear infinite;
+  animation: story-loop 64s linear infinite;
   display: flex;
-  gap: 6px;
+  gap: 8px;
   width: max-content;
   will-change: transform;
 }
-.story-sequence { display: flex; flex: none; gap: 6px; }
+.story-sequence { display: flex; flex: none; gap: 8px; }
 
-.story-card { flex: 0 0 88px; margin: 0; width: 88px; }
+.story-card {
+  flex: 0 0 clamp(82px, 9vw, 166px);
+  margin: 0;
+  width: clamp(82px, 9vw, 166px);
+}
 .card-art {
+  aspect-ratio: 88 / 128;
   border: 1px solid rgba(174, 164, 228, .45);
-  border-radius: 4px;
+  border-radius: 5px;
   box-shadow: 0 7px 20px rgba(0, 0, 0, .48);
-  height: 128px;
   overflow: hidden;
   position: relative;
   background-image: url("/images/aempy-reference.jpg");
-  background-position: var(--crop-x) -447px;
+  background-position: var(--crop-x) var(--crop-y, 80.7%);
   background-repeat: no-repeat;
-  background-size: 1024px 683px;
+  background-size: 1163.64% auto;
 }
 .story-card p {
   color: #e5e2ec;
-  font-size: 9px;
+  font-size: clamp(9px, .62vw, 11px);
   line-height: 1;
-  margin: 7px 0 0;
+  margin: 8px 0 0;
   text-align: center;
 }
-.fantasy { --crop-x: -20px; }
-.scifi { --crop-x: -103px; }
-.slice { --crop-x: -187px; }
-.action { --crop-x: -277px; }
-.cozy { --crop-x: -376px; }
-.drama { --crop-x: -476px; }
-.adventure { --crop-x: -580px; }
-.cyberpunk { --crop-x: -683px; }
-.historical { --crop-x: -782px; }
-.comedy { --crop-x: -871px; }
+.fantasy { --crop-x: 2.14%; }
+.fantasy .card-art::after {
+  backdrop-filter: blur(7px);
+  background: linear-gradient(90deg, rgba(9, 17, 34, .98), rgba(9, 17, 34, .82));
+  border-radius: 0 50% 50% 0;
+  content: "";
+  height: 34%;
+  left: 0;
+  position: absolute;
+  top: 34%;
+  width: 23%;
+}
+.scifi { --crop-x: 11%; }
+.slice { --crop-x: 19.98%; }
+.action { --crop-x: 29.59%; }
+.cozy { --crop-x: 40.17%; }
+.drama { --crop-x: 50.85%; }
+.adventure { --crop-x: 61.97%; }
+.cyberpunk { --crop-x: 72.97%; }
+.historical { --crop-x: 83.55%; }
+.comedy { --crop-x: 93.06%; }
 
 .aempy-landing footer {
   align-items: center;
@@ -285,7 +289,7 @@
 .aempy-landing footer span { background: rgba(161, 147, 220, .55); height: 1px; width: 32px; }
 .aempy-landing footer p { color: #d2cedc; font-size: 11px; letter-spacing: .8px; margin: 0; }
 
-@keyframes story-loop { to { transform: translateX(calc(-50% - 3px)); } }
+@keyframes story-loop { to { transform: translateX(calc(-50% - 4px)); } }
 
 @media (prefers-reduced-motion: reduce) { .story-track { animation: none; } }
 
