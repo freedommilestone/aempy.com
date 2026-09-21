@@ -11,7 +11,7 @@
     radial-gradient(circle at 76% 16%, rgba(117, 79, 223, .18), transparent 22%),
     radial-gradient(circle at 29% 38%, rgba(23, 68, 126, .18), transparent 24%),
     var(--night);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
   position: relative;
 }
 
@@ -45,21 +45,17 @@
   align-items: center;
   color: var(--ink);
   display: flex;
-  font-size: 21px;
-  font-weight: 650;
-  gap: 10px;
-  letter-spacing: -.6px;
+  font-size: 20px;
+  font-weight: 600;
+  gap: 9px;
+  letter-spacing: -.4px;
   text-decoration: none;
 }
 
 .aempy-mark {
-  align-items: center;
-  background: linear-gradient(135deg, #b198ff 8%, #5f33ee 48%, #25b6db 100%);
-  clip-path: polygon(50% 0, 100% 92%, 74% 92%, 50% 48%, 26% 92%, 0 92%);
-  color: transparent;
-  display: inline-flex;
-  height: 31px;
-  width: 31px;
+  display: block;
+  height: 28px;
+  width: 28px;
 }
 
 .aempy-header nav {
@@ -70,7 +66,8 @@
 
 .aempy-header nav a {
   color: #c4c2d3;
-  font-size: 13px;
+  font-size: 14px;
+  font-weight: 500;
   padding: 25px 0 10px;
   text-decoration: none;
 }
@@ -82,21 +79,23 @@
 
 .header-cta,
 .waitlist-form button {
-  background: linear-gradient(110deg, #5b38ed, #744bff);
-  border: 1px solid rgba(197, 177, 255, .34);
-  border-radius: 7px;
-  box-shadow: 0 8px 22px rgba(71, 42, 225, .32);
+  background: #6d4dff;
+  border: 0;
+  border-radius: 8px;
+  box-shadow: none;
   color: #fff;
   font-family: inherit;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
-  padding: 11px 20px;
+  letter-spacing: -.1px;
+  line-height: 1;
+  padding: 11px 16px;
   text-decoration: none;
-  transition: transform .2s ease, filter .2s ease;
+  transition: background .2s ease;
 }
 
 .header-cta:hover,
-.waitlist-form button:hover { filter: brightness(1.13); transform: translateY(-1px); }
+.waitlist-form button:hover { background: #7c5cff; }
 
 .aempy-hero {
   display: grid;
@@ -109,19 +108,20 @@
 
 .eyebrow {
   color: #bba9ec;
-  font-size: 10px;
-  letter-spacing: 3px;
-  margin: 0 0 9px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 2.4px;
+  margin: 0 0 10px;
 }
 
 .aempy-landing h1 {
   color: #f7f4f6;
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: clamp(38px, 4.25vw, 59px);
+  font-family: var(--font-display), Georgia, "Times New Roman", serif;
+  font-size: clamp(46px, 4.7vw, 68px);
   font-weight: 700;
-  letter-spacing: -2.6px;
-  line-height: .98;
-  margin: 0 0 12px;
+  letter-spacing: -1.6px;
+  line-height: .96;
+  margin: 0 0 14px;
 }
 
 .aempy-landing h1 em {
@@ -134,13 +134,14 @@
 
 .hero-description {
   color: #dedce5;
-  font-size: 14px;
-  line-height: 1.42;
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 1.45;
   margin: 0;
-  max-width: 413px;
+  max-width: 460px;
 }
 
-.prompt-note { color: #c5c2d1; font-size: 13px; margin: 12px 0 13px; }
+.prompt-note { color: #c5c2d1; font-size: 15px; margin: 14px 0 14px; }
 
 .waitlist-form { display: flex; gap: 7px; max-width: 410px; }
 
@@ -148,11 +149,11 @@
   align-items: center;
   background: rgba(14, 24, 47, .85);
   border: 1px solid rgba(157, 173, 214, .4);
-  border-radius: 6px;
+  border-radius: 8px;
   display: flex;
   flex: 1;
   gap: 10px;
-  padding: 0 12px;
+  padding: 0 14px;
 }
 
 .email-field span { color: #b8c4da; font-size: 17px; }
@@ -161,16 +162,16 @@
   border: 0;
   color: white;
   font: inherit;
-  font-size: 12px;
-  height: 39px;
+  font-size: 14px;
+  height: 42px;
   min-width: 0;
   outline: none;
   width: 100%;
 }
 .email-field input::placeholder { color: #a6a4b4; }
 .email-field:focus-within { border-color: #9b79ff; box-shadow: 0 0 0 3px rgba(123, 81, 231, .18); }
-.waitlist-form button { border-radius: 6px; cursor: pointer; padding: 0 21px; white-space: nowrap; }
-.privacy-note { color: #afadbb; font-size: 10px; margin: 7px 0; }
+.waitlist-form button { cursor: pointer; height: 44px; padding: 0 18px; white-space: nowrap; }
+.privacy-note { color: #afadbb; font-size: 12px; margin: 8px 0; }
 .form-success { background: rgba(102, 72, 240, .18); border: 1px solid #7755ed; border-radius: 7px; color: #e7e0ff; font-size: 13px; margin: 0; padding: 12px; width: 100%; }
 
 .hero-world {
@@ -218,13 +219,15 @@
   min-height: 44px;
 }
 .capability:last-child { border: 0; }
-.capability-icon { color: #8258ff; font-size: 32px; font-weight: 300; line-height: 1; }
-.capability p { color: #f3f1f4; font-size: 12px; font-weight: 600; line-height: 1.1; margin: 0; }
+.capability-icon { color: #8d69ff; display: flex; line-height: 0; }
+.capability p { color: #f3f1f4; font-size: 13px; font-weight: 600; line-height: 1.15; margin: 0; white-space: pre-line; }
 
 .story-showcase {
-  background: linear-gradient(180deg, rgba(13, 25, 48, .28), rgba(5, 12, 27, .72));
+  background:
+    linear-gradient(180deg, transparent 42%, rgba(120, 150, 210, .08) 68%, transparent 88%),
+    linear-gradient(180deg, rgba(13, 25, 48, .28), rgba(5, 12, 27, .72));
   overflow: hidden;
-  padding: 7px 0 10px;
+  padding: 7px 0 0;
   position: relative;
   z-index: 1;
 }
@@ -267,10 +270,29 @@
 }
 .story-card p {
   color: #e5e2ec;
-  font-size: clamp(9px, .62vw, 11px);
+  font-size: 12px;
   line-height: 1;
   margin: 8px 0 0;
+  position: relative;
   text-align: center;
+  z-index: 1;
+}
+.card-reflection {
+  height: 78px;
+  margin-top: 6px;
+  overflow: hidden;
+  pointer-events: none;
+  position: relative;
+  -webkit-mask-image: linear-gradient(to bottom, rgba(0, 0, 0, .55), transparent 72%);
+  mask-image: linear-gradient(to bottom, rgba(0, 0, 0, .55), transparent 72%);
+}
+.card-reflection img {
+  display: block;
+  height: 224px;
+  object-fit: cover;
+  opacity: .7;
+  transform: scaleY(-1);
+  width: 168px;
 }
 
 .aempy-landing footer {
@@ -283,7 +305,7 @@
   z-index: 1;
 }
 .aempy-landing footer span { background: rgba(161, 147, 220, .55); height: 1px; width: 32px; }
-.aempy-landing footer p { color: #d2cedc; font-size: 11px; letter-spacing: .8px; margin: 0; }
+.aempy-landing footer p { color: #d2cedc; font-size: 13px; letter-spacing: .2px; margin: 0; }
 
 @keyframes story-loop { to { transform: translateX(calc(-50% - 4px)); } }
 
