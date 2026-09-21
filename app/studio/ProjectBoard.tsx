@@ -99,8 +99,10 @@ export function ProjectBoard({ id }: { id: string }) {
   const view = trackById(active, active.currentTrackId);
 
   function persist(next: Project) {
-    upsertProject(next);
-    setProject(next);
+    const stored = loadProjects().find((item) => item.id === next.id);
+    const merged = stored ? { ...next, title: stored.title } : next;
+    upsertProject(merged);
+    setProject(merged);
   }
 
   function selectTrack(trackId: string) {
@@ -220,13 +222,6 @@ export function ProjectBoard({ id }: { id: string }) {
     <div className="studio">
       <BeatBoard project={active} persist={persist} />
       {notice ? <p className="notice">{notice}</p> : null}
-
-      <input
-        className="board-title-input"
-        value={active.title}
-        onChange={(event) => persist({ ...active, title: event.target.value })}
-        aria-label="Project title"
-      />
 
       <div className="track-bar">
         {active.tracks.map((track, index) => (

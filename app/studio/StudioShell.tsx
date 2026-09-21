@@ -7,6 +7,7 @@ import {
   PROJECTS_CHANGED,
   deleteProject,
   loadProjects,
+  upsertProject,
   type Project,
 } from "@/lib/projects";
 
@@ -95,15 +96,37 @@ export function StudioShell({ children }: { children: React.ReactNode }) {
                     key={project.id}
                     className={`sidebar-item${current ? " is-current" : ""}`}
                   >
-                    <Link href={`/studio/${project.id}`}>
-                      <strong>{project.title}</strong>
-                      <span>
-                        {formatDate(project.createdAt)} ·{" "}
-                        {project.tracks.length === 0
-                          ? "No tracks"
-                          : `${project.tracks.length} track${project.tracks.length === 1 ? "" : "s"}`}
-                      </span>
-                    </Link>
+                    {current ? (
+                      <div className="sidebar-item-body">
+                        <input
+                          className="sidebar-title-input"
+                          value={project.title}
+                          aria-label="Project title"
+                          onChange={(event) =>
+                            upsertProject({
+                              ...project,
+                              title: event.target.value,
+                            })
+                          }
+                        />
+                        <span>
+                          {formatDate(project.createdAt)} ·{" "}
+                          {project.tracks.length === 0
+                            ? "No tracks"
+                            : `${project.tracks.length} track${project.tracks.length === 1 ? "" : "s"}`}
+                        </span>
+                      </div>
+                    ) : (
+                      <Link href={`/studio/${project.id}`}>
+                        <strong>{project.title}</strong>
+                        <span>
+                          {formatDate(project.createdAt)} ·{" "}
+                          {project.tracks.length === 0
+                            ? "No tracks"
+                            : `${project.tracks.length} track${project.tracks.length === 1 ? "" : "s"}`}
+                        </span>
+                      </Link>
+                    )}
                     <button
                       className="sidebar-remove"
                       type="button"
