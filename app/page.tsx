@@ -1,8 +1,9 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import Landing from "./Landing";
 
-export default function Home() {
+function LegacyHome() {
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
 
@@ -155,4 +156,8 @@ export default function Home() {
       </main>
     </div>
   );
+}
+
+export default function Home() {
+  return <Landing />;
 }
