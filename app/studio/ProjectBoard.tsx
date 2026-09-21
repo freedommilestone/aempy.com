@@ -14,9 +14,7 @@ import {
 } from "@/lib/ingest";
 import {
   ensureTrack,
-  moveTrack,
   patchTrack,
-  removeTrack,
   uid,
   type Project,
   type TrackKind,
@@ -26,7 +24,6 @@ import {
 import {
   addScene,
   attachFilesToScenes,
-  captureVersion,
   patchScene,
   removeScene,
   restoreVersion,
@@ -107,12 +104,6 @@ export function ProjectBoard({ id }: { id: string }) {
 
   function selectTrack(trackId: string) {
     persist({ ...active, currentTrackId: trackId });
-  }
-
-  function saveVersion() {
-    if (!view) return;
-    persist(captureVersion(active, view.id));
-    setNotice("Version saved for this track.");
   }
 
   async function ingestDropped(files: File[]) {
@@ -251,32 +242,6 @@ export function ProjectBoard({ id }: { id: string }) {
                 }
                 aria-label="Track name"
               />
-              <div className="row-actions">
-                <button
-                  className="button ghost"
-                  type="button"
-                  onClick={() => persist(moveTrack(active, view.id, -1))}
-                >
-                  Up
-                </button>
-                <button
-                  className="button ghost"
-                  type="button"
-                  onClick={() => persist(moveTrack(active, view.id, 1))}
-                >
-                  Down
-                </button>
-                <button className="button ghost" type="button" onClick={saveVersion}>
-                  Save version
-                </button>
-                <button
-                  className="button danger"
-                  type="button"
-                  onClick={() => persist(removeTrack(active, view.id))}
-                >
-                  Remove
-                </button>
-              </div>
             </div>
 
             {view.kind === "thumbnail" && (
@@ -490,20 +455,6 @@ export function ProjectBoard({ id }: { id: string }) {
                 </button>
               </div>
             )}
-
-            <label className="kicker" htmlFor="track-result">
-              Result
-            </label>
-            <textarea
-              id="track-result"
-              className="result-editor"
-              value={view.content}
-              onChange={(event) =>
-                persist(
-                  patchTrack(active, view.id, { content: event.target.value }),
-                )
-              }
-            />
 
             {view.kind === "publish" && (
               <ul className="checklist">

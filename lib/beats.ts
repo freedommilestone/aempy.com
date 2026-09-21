@@ -13,35 +13,50 @@ export const DEFAULT_BEAT_RECS = [
   "Colder light, slower move, one specific prop from this beat.",
 ];
 
+const CLOCK_PATTERN = String.raw`(?:\d{1,2}:)?\d{2}:\d{2}`;
+const CLOCK_RE = new RegExp(CLOCK_PATTERN);
+const RANGE_RE = new RegExp(
+  String.raw`\[?\s*(${CLOCK_PATTERN})\s*[–\-—]\s*(?:(${CLOCK_PATTERN})|end)\s*\]?`,
+  "i",
+);
+const TIMESTAMP_LINE_RE = new RegExp(
+  String.raw`^\s*\[?\s*${CLOCK_PATTERN}\s*[–\-—]\s*(?:${CLOCK_PATTERN}|end)\s*\]?`,
+  "i",
+);
+
 export function formatClock(seconds: number) {
   const safe = Math.max(0, Math.round(seconds));
-  const minutes = Math.floor(safe / 60);
+  const hours = Math.floor(safe / 3600);
+  const minutes = Math.floor((safe % 3600) / 60);
   const rest = safe % 60;
+  if (hours > 0) {
+    return `${hours}:${String(minutes).padStart(2, "0")}:${String(rest).padStart(2, "0")}`;
+  }
   return `${minutes}:${String(rest).padStart(2, "0")}`;
 }
 
-function toSec(minutes: string, seconds: string) {
-  return Number(minutes) * 60 + Number(seconds);
+function toSec(clock: string) {
+  const parts = clock.split(":").map(Number);
+  if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
+  return parts[0] * 60 + parts[1];
 }
 
 export function parseClockInput(text: string) {
-  const match = text.match(/(\d{1,2}):(\d{2})/);
+  const match = text.match(CLOCK_RE);
   if (!match) return null;
-  return toSec(match[1], match[2]);
+  return toSec(match[0]);
 }
 
 export function parseTimeRange(text: string) {
-  const range = text.match(
-    /(\d{1,2}):(\d{2})\s*[–\-—]\s*(?:(\d{1,2}):(\d{2})|end)/i,
-  );
+  const range = text.match(RANGE_RE);
   if (range) {
-    const start = toSec(range[1], range[2]);
-    const end = range[3] ? toSec(range[3], range[4]) : undefined;
+    const start = toSec(range[1]);
+    const end = range[2] ? toSec(range[2]) : undefined;
     return { start, end };
   }
-  const one = text.match(/(\d{1,2}):(\d{2})/);
+  const one = text.match(CLOCK_RE);
   if (!one) return null;
-  return { start: toSec(one[1], one[2]) };
+  return { start: toSec(one[0]) };
 }
 
 export function endOf(beat: Beat) {
@@ -195,6 +210,19 @@ export function autoRecommendations(beat: Beat) {
 export function splitIntoBeats(text: string): string[] {
   const trimmed = text.trim();
   if (!trimmed) return [];
+  const lines = trimmed.split(/\n/);
+  const timestampStarts = lines
+    .map((line, index) => (TIMESTAMP_LINE_RE.test(line) ? index : -1))
+    .filter((index) => index >= 0);
+  if (timestampStarts.length > 0) {
+    const chunks: string[] = [];
+    timestampStarts.forEach((start, offset) => {
+      const end = timestampStarts[offset + 1] ?? lines.length;
+      const chunk = lines.slice(start, end).join("\n").trim();
+      if (chunk) chunks.push(chunk);
+    });
+    return chunks;
+  }
   const headed = trimmed.split(
     /\n(?=(?:COLD OPEN|TURN|PROOF|CLOSER|SCENE\s+\d+|BEAT\s+\d+|INT\.|EXT\.|TITLE:))/i,
   );

@@ -132,11 +132,6 @@ export function BeatBoard({
         </p>
       ) : (
         <div className="beat-layout">
-          <p className="nle-readout" aria-live="polite">
-            {viewRange
-              ? `${formatClock(viewRange.start)} – ${formatClock(viewRange.end)}`
-              : "Drag to select a section"}
-          </p>
           <div
             className="nle"
             ref={boardRef}
@@ -231,11 +226,6 @@ export function BeatBoard({
           {selected ? (
             <div className="beat-detail">
               <div className="kicker-row">
-                <p className="kicker">
-                  {viewRange
-                    ? `${formatClock(viewRange.start)} – ${formatClock(viewRange.end)}`
-                    : `Section ${formatClock(selected.startSec)}`}
-                </p>
                 <div className="row-actions">
                   <button
                     className="button ghost"

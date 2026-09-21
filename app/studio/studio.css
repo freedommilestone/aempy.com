@@ -336,13 +336,6 @@ button.button.danger {
   gap: 0.55rem;
 }
 
-.nle-readout {
-  margin: 0;
-  color: var(--muted);
-  font-variant-numeric: tabular-nums;
-  font-size: 0.9rem;
-}
-
 .nle {
   overflow-x: auto;
   border: 1px solid var(--line);
