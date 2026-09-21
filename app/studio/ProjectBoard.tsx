@@ -198,13 +198,6 @@ export function ProjectBoard({ id }: { id: string }) {
         });
       }
       persist(alignBeats(next));
-      const bits = [
-        scripts.length ? `${scripts.length} script` : "",
-        pictures.length ? `${pictures.length} still` : "",
-        clips.length ? `${clips.length} clip` : "",
-        audio.length ? `${audio.length} audio` : "",
-      ].filter(Boolean);
-      setNotice(`Plugged in ${bits.join(", ")}. Sorted onto the timeline.`);
     } finally {
       setIngestBusy(false);
     }

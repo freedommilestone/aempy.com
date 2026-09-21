@@ -240,6 +240,16 @@ function splitTimestampedBeats(text: string): string[] {
   return [];
 }
 
+export function beatScriptText(script: string) {
+  const trimmed = script.trim();
+  if (!trimmed) return "";
+  const lines = trimmed.split(/\n/);
+  if (TIMESTAMP_LINE_RE.test(lines[0] ?? "")) {
+    return lines.slice(1).join("\n").trim();
+  }
+  return trimmed;
+}
+
 function titleFromChunk(chunk: string, index: number) {
   const line = chunk.split("\n").find((item) => item.trim()) ?? "";
   const cleaned = line.replace(/^TITLE:\s*/i, "").trim();

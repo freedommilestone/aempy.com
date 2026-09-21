@@ -3,15 +3,15 @@
 import { useEffect, useRef, useState } from "react";
 import { getAsset } from "@/lib/assets";
 import {
-  beatAtTime,
   beatById,
   beatForRange,
+  beatScriptText,
   endOf,
   formatClock,
   rulerMarks,
   timelineDuration,
 } from "@/lib/beats";
-import type { Project } from "@/lib/projects";
+import type { Beat, Project } from "@/lib/projects";
 
 function FrameThumb({ stillId, clipId }: { stillId?: string; clipId?: string }) {
   const [url, setUrl] = useState<string | null>(null);
@@ -71,6 +71,7 @@ export function BeatBoard({
     : selected
       ? { start: selected.startSec, end: endOf(selected) }
       : null;
+  const selectedScript = selected ? beatScriptText(selected.script) : "";
 
   function timeAt(clientX: number) {
     const board = boardRef.current;
@@ -84,33 +85,58 @@ export function BeatBoard({
     persist({ ...project, currentBeatId: beatId });
   }
 
+  function hitBeat(seconds: number) {
+    return (
+      project.beats.find(
+        (beat) => seconds >= beat.startSec && seconds < endOf(beat),
+      ) ?? null
+    );
+  }
+
+  function selectClip(beat: Beat) {
+    setRange({ start: beat.startSec, end: endOf(beat) });
+    selectBeat(beat.id);
+  }
+
+  function clearSelect() {
+    setRange(null);
+    selectBeat(null);
+  }
+
+  function toggleClip(beat: Beat) {
+    if (beat.id === selected?.id) {
+      clearSelect();
+      return;
+    }
+    selectClip(beat);
+  }
+
   function step(dir: -1 | 1) {
     if (selectedIndex < 0) {
       const fallback = dir === 1 ? project.beats[0] : project.beats.at(-1);
-      if (fallback) {
-        setRange({ start: fallback.startSec, end: endOf(fallback) });
-        selectBeat(fallback.id);
-      }
+      if (fallback) selectClip(fallback);
       return;
     }
     const next = project.beats[selectedIndex + dir];
     if (!next) return;
-    setRange({ start: next.startSec, end: endOf(next) });
-    persist({ ...project, currentBeatId: next.id });
+    selectClip(next);
   }
 
   function finishSelect(start: number, end: number) {
     const lo = Math.min(start, end);
     const hi = Math.max(start, end);
-    const beat =
-      hi - lo < 0.12
-        ? beatAtTime(project.beats, lo)
-        : beatForRange(project.beats, lo, hi);
-    if (hi - lo < 0.12 && beat) {
-      setRange({ start: beat.startSec, end: endOf(beat) });
-    } else {
-      setRange({ start: lo, end: Math.max(lo + 0.2, hi) });
+    const isClick = hi - lo < 0.12;
+    if (isClick) {
+      const beat = hitBeat(lo);
+      if (!beat) {
+        clearSelect();
+        return;
+      }
+      toggleClip(beat);
+      return;
     }
+    const beat = beatForRange(project.beats, lo, hi);
+    setRange({ start: lo, end: Math.max(lo + 0.2, hi) });
     if (beat) persist({ ...project, currentBeatId: beat.id });
   }
 
@@ -146,8 +172,7 @@ export function BeatBoard({
                 step(1);
               }
               if (event.key === "Escape") {
-                setRange(null);
-                persist({ ...project, currentBeatId: null });
+                clearSelect();
               }
             }}
             onWheel={(event) => {
@@ -190,13 +215,29 @@ export function BeatBoard({
                 {project.beats.map((beat) => {
                   const start = beat.startSec;
                   const finish = endOf(beat);
+                  const isCurrent = beat.id === selected?.id;
                   return (
                     <div
                       key={beat.id}
-                      className={`nle-clip${beat.id === selected?.id ? " is-current" : ""}`}
+                      role="button"
+                      tabIndex={0}
+                      aria-pressed={isCurrent}
+                      aria-label={`${formatClock(start)} to ${formatClock(finish)}`}
+                      className={`nle-clip${isCurrent ? " is-current" : ""}`}
                       style={{
                         left: `${(start / duration) * 100}%`,
                         width: `${((finish - start) / duration) * 100}%`,
+                      }}
+                      onPointerDown={(event) => {
+                        event.stopPropagation();
+                        toggleClip(beat);
+                      }}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          toggleClip(beat);
+                        }
                       }}
                     >
                       <FrameThumb
@@ -222,6 +263,24 @@ export function BeatBoard({
             </div>
           </div>
 
+          <div className="nle-detail" aria-live="polite">
+            {selected ? (
+              <>
+                <p className="nle-detail-clock">
+                  {formatClock(selected.startSec)} – {formatClock(endOf(selected))}
+                </p>
+                {selectedScript ? (
+                  <p className="nle-detail-script">{selectedScript}</p>
+                ) : (
+                  <p className="nle-detail-empty">No script on this clip.</p>
+                )}
+              </>
+            ) : (
+              <p className="nle-detail-empty">
+                Select a clip to read its script.
+              </p>
+            )}
+          </div>
         </div>
       )}
     </section>
