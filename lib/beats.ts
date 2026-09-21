@@ -13,6 +13,54 @@ export const DEFAULT_BEAT_RECS = [
   "Colder light, slower move, one specific prop from this beat.",
 ];
 
+export function formatClock(seconds: number) {
+  const safe = Math.max(0, Math.round(seconds));
+  const minutes = Math.floor(safe / 60);
+  const rest = safe % 60;
+  return `${minutes}:${String(rest).padStart(2, "0")}`;
+}
+
+export function parseStartSeconds(
+  text: string,
+  index: number,
+  fallback?: number,
+) {
+  const match = text.match(/(\d{1,2}):(\d{2})/);
+  if (match) return Number(match[1]) * 60 + Number(match[2]);
+  if (fallback != null && fallback > 0) return fallback;
+  return fallback === 0 && index === 0 ? 0 : index * 8;
+}
+
+export function autoRecommendations(beat: Beat) {
+  const extras: string[] = [];
+  if ((beat.grades.still ?? 5) <= 2) {
+    extras.push(
+      "Regenerate this still: tighter close-up, face readable on a phone.",
+    );
+  }
+  if ((beat.grades.clip ?? 5) <= 2) {
+    extras.push(
+      "Regenerate this clip: shorter take, slower camera, match the still.",
+    );
+  }
+  if ((beat.grades.script ?? 5) <= 2) {
+    extras.push("Rewrite this timestamp so the picture carries the line.");
+  }
+  if ((beat.grades.vo ?? 5) <= 2) {
+    extras.push("Rewrite the VO: shorter, more subtext, leave air for the cut.");
+  }
+  if (!beat.stillFileId) {
+    extras.push("Generate a still for this timestamp from the prompt.");
+  }
+  if (!beat.clipFileId) {
+    extras.push("Generate a clip for this timestamp from the prompt.");
+  }
+  const base = beat.recommendations.length
+    ? beat.recommendations
+    : DEFAULT_BEAT_RECS;
+  return [...new Set([...extras, ...base])].slice(0, 5);
+}
+
 export function splitIntoBeats(text: string): string[] {
   const trimmed = text.trim();
   if (!trimmed) return [];
@@ -43,6 +91,7 @@ export function emptyBeat(partial?: Partial<Beat>): Beat {
     stillTakes: [],
     clipTakes: [],
     grades: {},
+    startSec: 0,
     ...partial,
   };
 }
@@ -72,24 +121,27 @@ export function alignBeats(project: Project): Project {
         prompt: still?.prompt || clip?.prompt || "",
         stillFileId: still?.fileId,
         clipFileId: clip?.fileId,
+        startSec: parseStartSeconds(chunk || still?.beat || "", index),
       });
     });
     return {
       ...project,
       beats: built,
-      currentBeatId: built[0]?.id ?? null,
+      currentBeatId: project.currentBeatId ?? null,
     };
   }
 
   const filled: Beat[] = beats.map((beat, index) => {
     const still = stills[index];
     const clip = clips[index];
+    const script = beat.script || scriptParts[index] || "";
     return {
       ...beat,
       stillFileId: beat.stillFileId || still?.fileId,
       clipFileId: beat.clipFileId || clip?.fileId,
       prompt: beat.prompt || still?.prompt || clip?.prompt || "",
-      script: beat.script || scriptParts[index] || "",
+      script,
+      startSec: parseStartSeconds(script || still?.beat || "", index, beat.startSec),
       vo: beat.vo || voParts[index] || "",
     };
   });
@@ -106,6 +158,7 @@ export function alignBeats(project: Project): Project {
         prompt: still?.prompt || clip?.prompt || "",
         stillFileId: still?.fileId,
         clipFileId: clip?.fileId,
+        startSec: parseStartSeconds(scriptParts[index] ?? still?.beat ?? "", index),
       }),
     );
   }
@@ -116,7 +169,7 @@ export function alignBeats(project: Project): Project {
     currentBeatId:
       project.currentBeatId && filled.some((beat) => beat.id === project.currentBeatId)
         ? project.currentBeatId
-        : filled[0]?.id ?? null,
+        : null,
   };
 }
 
@@ -135,8 +188,10 @@ export function patchBeat(
 }
 
 export function addBeat(project: Project): Project {
+  const last = project.beats.at(-1)?.startSec ?? -8;
   const beat = emptyBeat({
     title: `Beat ${String(project.beats.length + 1).padStart(2, "0")}`,
+    startSec: last + 8,
   });
   return {
     ...project,
@@ -151,7 +206,7 @@ export function removeBeat(project: Project, beatId: string): Project {
     ...project,
     beats,
     currentBeatId:
-      project.currentBeatId === beatId ? (beats[0]?.id ?? null) : project.currentBeatId,
+      project.currentBeatId === beatId ? null : project.currentBeatId,
   };
 }
 
@@ -166,7 +221,7 @@ export function explodeBeat(project: Project, beatId: string): Project {
       title: titleFromChunk(script, index + 1),
       script,
       prompt: beat.prompt,
-      vo: index === 0 ? "" : "",
+      startSec: beat.startSec + (index + 1) * 8,
     }),
   );
   const index = project.beats.findIndex((item) => item.id === beatId);

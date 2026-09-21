@@ -83,6 +83,7 @@ export type MediaTake = {
 export type Beat = {
   id: string;
   title: string;
+  startSec: number;
   script: string;
   vo: string;
   prompt: string;
@@ -646,6 +647,7 @@ function normalizeBeat(beat: Beat): Beat {
     stillTakes: beat.stillTakes ?? [],
     clipTakes: beat.clipTakes ?? [],
     grades: beat.grades ?? {},
+    startSec: beat.startSec ?? 0,
   };
 }
 
