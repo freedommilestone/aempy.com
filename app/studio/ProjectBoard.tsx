@@ -1,13 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { FileSlot } from "@/app/studio/FileSlot";
 import { BeatBoard } from "@/app/studio/BeatBoard";
 import { PlugFab } from "@/app/studio/PlugFab";
 import { getAsset, putAsset } from "@/lib/assets";
 import { alignBeats } from "@/lib/beats";
-import type { ChatResult } from "@/lib/chat";
 import {
   classifyIngestFile,
   ingestLimitFor,
@@ -26,32 +25,13 @@ import {
 } from "@/lib/projects";
 import {
   addScene,
-  appendChat,
   attachFilesToScenes,
   captureVersion,
   patchScene,
   removeScene,
   restoreVersion,
   trackById,
-  withPromptRefinement,
 } from "@/lib/studioState";
-
-function CopyButton({ text }: { text: string }) {
-  const [copied, setCopied] = useState(false);
-  return (
-    <button
-      className="button ghost"
-      type="button"
-      onClick={async () => {
-        await navigator.clipboard.writeText(text);
-        setCopied(true);
-        window.setTimeout(() => setCopied(false), 1400);
-      }}
-    >
-      {copied ? "Copied" : "Copy prompt"}
-    </button>
-  );
-}
 
 function assignMap(map: Record<string, string>, key: string, nextId?: string) {
   const next = { ...map };
@@ -84,8 +64,6 @@ function pictureKind(project: Project): TrackKind {
 
 export function ProjectBoard({ id }: { id: string }) {
   const [project, setProject] = useState<Project | null>(null);
-  const [chatDraft, setChatDraft] = useState("");
-  const [chatBusy, setChatBusy] = useState(false);
   const [ingestBusy, setIngestBusy] = useState(false);
   const [notice, setNotice] = useState("");
   const [ready, setReady] = useState(false);
@@ -232,58 +210,6 @@ export function ProjectBoard({ id }: { id: string }) {
       setNotice(`Plugged in ${bits.join(", ")}. Sorted onto the timeline.`);
     } finally {
       setIngestBusy(false);
-    }
-  }
-
-  async function sendChat(event: FormEvent) {
-    event.preventDefault();
-    const text = chatDraft.trim();
-    if (!text || chatBusy || !view) return;
-    setChatBusy(true);
-    setChatDraft("");
-    const withUser = appendChat(active, {
-      role: "user",
-      text,
-      trackId: view.id,
-    });
-    persist(withUser);
-    try {
-      const response = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          track: view.label,
-          prompt: view.prompt,
-          content: view.content,
-          message: text,
-          history: withUser.chat.slice(-8).map((item) => ({
-            role: item.role,
-            text: item.text,
-          })),
-        }),
-      });
-      const data = (await response.json()) as ChatResult;
-      let next = patchTrack(withUser, view.id, {
-        prompt: data.prompt,
-        content: data.content,
-      });
-      next = captureVersion(next, view.id);
-      next = appendChat(next, {
-        role: "assistant",
-        text: data.reply,
-        trackId: view.id,
-      });
-      persist(next);
-    } catch {
-      persist(
-        appendChat(withUser, {
-          role: "assistant",
-          text: "Could not reach chat. Your message is still logged.",
-          trackId: view.id,
-        }),
-      );
-    } finally {
-      setChatBusy(false);
     }
   }
 
@@ -643,75 +569,6 @@ export function ProjectBoard({ id }: { id: string }) {
               </div>
             )}
           </section>
-
-          <aside className="panel">
-            <div className="kicker-row">
-              <h3>Prompt</h3>
-              <CopyButton text={view.prompt} />
-            </div>
-            <textarea
-              className="prompt-editor"
-              value={view.prompt}
-              onChange={(event) =>
-                persist(
-                  patchTrack(active, view.id, { prompt: event.target.value }),
-                )
-              }
-            />
-
-            {view.recommendations.length > 0 && (
-              <>
-                <h3 style={{ marginTop: "1.4rem" }}>Recommendations</h3>
-                <ul className="recs">
-                  {view.recommendations.map((item) => (
-                    <li key={item}>
-                      {item}
-                      <button
-                        className="button ghost"
-                        type="button"
-                        onClick={() =>
-                          persist(withPromptRefinement(active, view.id, item))
-                        }
-                      >
-                        Apply to prompt
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </>
-            )}
-
-            <h3 style={{ marginTop: "1.4rem" }}>Project chat</h3>
-            <p className="meta">Writes into {view.label}.</p>
-            <div className="chat-log">
-              {active.chat.length === 0 ? (
-                <p className="empty">No messages yet.</p>
-              ) : (
-                active.chat.map((message) => (
-                  <article
-                    className={`chat-msg is-${message.role}`}
-                    key={message.id}
-                  >
-                    <span className="kicker">
-                      {message.role === "user" ? "You" : "Studio"} ·{" "}
-                      {trackById(active, message.trackId)?.label ?? "Track"}
-                    </span>
-                    <p>{message.text}</p>
-                  </article>
-                ))
-              )}
-            </div>
-            <form className="chat-form" onSubmit={sendChat}>
-              <textarea
-                value={chatDraft}
-                onChange={(event) => setChatDraft(event.target.value)}
-                placeholder="Ask for a tighter hook, a new title pack, a VO tone…"
-              />
-              <button className="button primary" type="submit" disabled={chatBusy}>
-                {chatBusy ? "Writing…" : "Send to track"}
-              </button>
-            </form>
-          </aside>
         </div>
       ) : null}
 
