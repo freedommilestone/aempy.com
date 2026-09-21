@@ -84,6 +84,7 @@ export type Beat = {
   id: string;
   title: string;
   startSec: number;
+  endSec: number;
   script: string;
   vo: string;
   prompt: string;
@@ -648,6 +649,7 @@ function normalizeBeat(beat: Beat): Beat {
     clipTakes: beat.clipTakes ?? [],
     grades: beat.grades ?? {},
     startSec: beat.startSec ?? 0,
+    endSec: beat.endSec ?? 0,
   };
 }
 

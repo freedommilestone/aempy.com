@@ -5,23 +5,26 @@ import { FileSlot } from "@/app/studio/FileSlot";
 import { getAsset } from "@/lib/assets";
 import type { ChatResult } from "@/lib/chat";
 import {
-  addBeat,
   applyBeatRec,
   autoRecommendations,
+  beatAtTime,
   beatById,
+  beatForRange,
+  endOf,
   explodeBeat,
   formatClock,
-  gradeBeat,
+  parseClockInput,
   patchBeat,
   removeBeat,
   restoreTake,
+  rulerMarks,
   savePromptTake,
   setBeatMedia,
   splitIntoBeats,
-  weakScore,
+  timelineDuration,
 } from "@/lib/beats";
 import { appendChat } from "@/lib/studioState";
-import type { Beat, GradeKey, Project } from "@/lib/projects";
+import type { Beat, Project } from "@/lib/projects";
 
 function FrameThumb({ stillId, clipId }: { stillId?: string; clipId?: string }) {
   const [url, setUrl] = useState<string | null>(null);
@@ -47,39 +50,11 @@ function FrameThumb({ stillId, clipId }: { stillId?: string; clipId?: string }) 
     };
   }, [stillId, clipId]);
 
-  if (!url) return <div className="beat-item-frame is-empty" />;
+  if (!url) return <div className="nle-thumb is-empty" />;
   if (kind === "video") {
-    return <video className="beat-item-frame" src={url} muted playsInline />;
+    return <video className="nle-thumb" src={url} muted playsInline />;
   }
-  return <img className="beat-item-frame" src={url} alt="" />;
-}
-
-function GradeRow({
-  label,
-  value,
-  onChange,
-}: {
-  label: string;
-  value?: number;
-  onChange: (value: number) => void;
-}) {
-  return (
-    <div className="grade-row">
-      <span>{label}</span>
-      <div>
-        {[1, 2, 3, 4, 5].map((score) => (
-          <button
-            key={score}
-            className={`grade-dot${value === score ? " is-on" : ""}`}
-            type="button"
-            onClick={() => onChange(score)}
-          >
-            {score}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
+  return <img className="nle-thumb" src={url} alt="" />;
 }
 
 export function BeatBoard({
@@ -91,27 +66,67 @@ export function BeatBoard({
 }) {
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
-  const reelRef = useRef<HTMLDivElement>(null);
+  const [range, setRange] = useState<{ start: number; end: number } | null>(
+    null,
+  );
+  const boardRef = useRef<HTMLDivElement>(null);
+  const dragRef = useRef<{ origin: number } | null>(null);
   const selected = beatById(project, project.currentBeatId);
   const selectedIndex = project.beats.findIndex(
     (beat) => beat.id === selected?.id,
   );
+  const duration = timelineDuration(project.beats);
+  const pxPerSec = Math.max(8, Math.min(24, 960 / duration));
+  const boardWidth = Math.max(duration * pxPerSec, 320);
+  const viewRange = range
+    ? {
+        start: Math.min(range.start, range.end),
+        end: Math.max(range.start, range.end),
+      }
+    : selected
+      ? { start: selected.startSec, end: endOf(selected) }
+      : null;
 
-  function select(beatId: string) {
-    persist({
-      ...project,
-      currentBeatId: project.currentBeatId === beatId ? null : beatId,
-    });
+  function timeAt(clientX: number) {
+    const board = boardRef.current;
+    if (!board) return 0;
+    const rect = board.getBoundingClientRect();
+    const x = clientX - rect.left + board.scrollLeft;
+    return Math.min(duration, Math.max(0, (x / boardWidth) * duration));
+  }
+
+  function selectBeat(beatId: string | null) {
+    persist({ ...project, currentBeatId: beatId });
   }
 
   function step(dir: -1 | 1) {
     if (selectedIndex < 0) {
       const fallback = dir === 1 ? project.beats[0] : project.beats.at(-1);
-      if (fallback) persist({ ...project, currentBeatId: fallback.id });
+      if (fallback) {
+        setRange({ start: fallback.startSec, end: endOf(fallback) });
+        selectBeat(fallback.id);
+      }
       return;
     }
     const next = project.beats[selectedIndex + dir];
-    if (next) persist({ ...project, currentBeatId: next.id });
+    if (!next) return;
+    setRange({ start: next.startSec, end: endOf(next) });
+    persist({ ...project, currentBeatId: next.id });
+  }
+
+  function finishSelect(start: number, end: number) {
+    const lo = Math.min(start, end);
+    const hi = Math.max(start, end);
+    const beat =
+      hi - lo < 0.12
+        ? beatAtTime(project.beats, lo)
+        : beatForRange(project.beats, lo, hi);
+    if (hi - lo < 0.12 && beat) {
+      setRange({ start: beat.startSec, end: endOf(beat) });
+    } else {
+      setRange({ start: lo, end: Math.max(lo + 0.2, hi) });
+    }
+    if (beat) persist({ ...project, currentBeatId: beat.id });
   }
 
   function update(beatId: string, patch: Partial<Beat>) {
@@ -119,27 +134,12 @@ export function BeatBoard({
   }
 
   useEffect(() => {
-    const node = document.getElementById(`beat-frame-${project.currentBeatId}`);
-    node?.scrollIntoView({
-      inline: "center",
-      block: "nearest",
-      behavior: "smooth",
+    if (!selected) return;
+    setRange((current) => {
+      if (dragRef.current) return current;
+      return { start: selected.startSec, end: endOf(selected) };
     });
-  }, [project.currentBeatId]);
-
-  useEffect(() => {
-    const reel = reelRef.current;
-    if (!reel) return;
-    function onWheel(event: WheelEvent) {
-      if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
-      const scroller = event.currentTarget as HTMLDivElement | null;
-      if (!scroller) return;
-      scroller.scrollLeft += event.deltaY;
-      event.preventDefault();
-    }
-    reel.addEventListener("wheel", onWheel, { passive: false });
-    return () => reel.removeEventListener("wheel", onWheel);
-  }, []);
+  }, [selected?.id, selected?.startSec, selected?.endSec]);
 
   async function sendToBeat(event: FormEvent) {
     event.preventDefault();
@@ -161,7 +161,7 @@ export function BeatBoard({
         body: JSON.stringify({
           track: selected.title,
           prompt: selected.prompt,
-          content: `${selected.script}\n\n${selected.vo}`,
+          content: `Section ${formatClock(viewRange?.start ?? selected.startSec)}–${formatClock(viewRange?.end ?? endOf(selected))}\n${selected.script}\n\n${selected.vo}`,
           message: text,
         }),
       });
@@ -197,59 +197,23 @@ export function BeatBoard({
 
   return (
     <section className="beat-studio">
-      <div className="kicker-row">
-        <p className="kicker">Timeline</p>
-        <div className="row-actions">
-          <button
-            className="button ghost"
-            type="button"
-            onClick={() => persist(addBeat(project))}
-          >
-            Add timestamp
-          </button>
-        </div>
-      </div>
-      <p className="meta">
-        Scrub left to right. Click a timestamp to grade that section or restage
-        it with a prompt.
-      </p>
-
       {project.beats.length === 0 ? (
         <p className="empty">
           Use the plug in the corner to drop a script, a folder of stills, or
-          clips. Add a timestamp if you want to grade a section first.
+          clips.
         </p>
       ) : (
         <div className="beat-layout">
-          <div className="beat-transport">
-            <button
-              className="button ghost"
-              type="button"
-              onClick={() => step(-1)}
-              disabled={project.beats.length === 0}
-            >
-              Prev
-            </button>
-            <span className="meta">
-              {selected
-                ? formatClock(selected.startSec)
-                : "Pick a timestamp"}
-            </span>
-            <button
-              className="button ghost"
-              type="button"
-              onClick={() => step(1)}
-              disabled={project.beats.length === 0}
-            >
-              Next
-            </button>
-          </div>
+          <p className="nle-readout" aria-live="polite">
+            {viewRange
+              ? `${formatClock(viewRange.start)} – ${formatClock(viewRange.end)}`
+              : "Drag to select a section"}
+          </p>
           <div
-            className="beat-reel"
-            role="list"
-            ref={reelRef}
+            className="nle"
+            ref={boardRef}
             tabIndex={0}
-            aria-label="Video timestamps"
+            aria-label="Edit timeline"
             onKeyDown={(event) => {
               if (event.key === "ArrowLeft") {
                 event.preventDefault();
@@ -260,43 +224,89 @@ export function BeatBoard({
                 step(1);
               }
               if (event.key === "Escape") {
+                setRange(null);
                 persist({ ...project, currentBeatId: null });
               }
             }}
+            onWheel={(event) => {
+              if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
+              event.currentTarget.scrollLeft += event.deltaY;
+            }}
+            onPointerDown={(event) => {
+              const origin = timeAt(event.clientX);
+              dragRef.current = { origin };
+              setRange({ start: origin, end: origin });
+              event.currentTarget.setPointerCapture(event.pointerId);
+            }}
+            onPointerMove={(event) => {
+              if (!dragRef.current) return;
+              setRange({
+                start: dragRef.current.origin,
+                end: timeAt(event.clientX),
+              });
+            }}
+            onPointerUp={(event) => {
+              if (!dragRef.current) return;
+              const origin = dragRef.current.origin;
+              dragRef.current = null;
+              finishSelect(origin, timeAt(event.clientX));
+            }}
           >
-            {project.beats.map((beat) => {
-              const score = weakScore(beat);
-              return (
-                <button
-                  key={beat.id}
-                  id={`beat-frame-${beat.id}`}
-                  className={`beat-item${beat.id === selected?.id ? " is-current" : ""}${score != null && score <= 2.5 ? " is-weak" : ""}`}
-                  type="button"
-                  role="listitem"
-                  onClick={() => select(beat.id)}
-                >
-                  <FrameThumb
-                    stillId={beat.stillFileId}
-                    clipId={beat.clipFileId}
-                  />
-                  <span className="beat-item-meta">
-                    <strong className="beat-clock">
-                      {formatClock(beat.startSec)}
-                    </strong>
-                    {score != null ? (
-                      <span className="meta">{score.toFixed(1)}</span>
-                    ) : null}
+            <div className="nle-board" style={{ width: boardWidth }}>
+              <div className="nle-ruler">
+                {rulerMarks(duration).map((mark) => (
+                  <span
+                    key={mark}
+                    className="nle-mark"
+                    style={{ left: `${(mark / duration) * 100}%` }}
+                  >
+                    {formatClock(mark)}
                   </span>
-                </button>
-              );
-            })}
+                ))}
+              </div>
+              <div className="nle-track">
+                {project.beats.map((beat) => {
+                  const start = beat.startSec;
+                  const finish = endOf(beat);
+                  return (
+                    <div
+                      key={beat.id}
+                      className={`nle-clip${beat.id === selected?.id ? " is-current" : ""}`}
+                      style={{
+                        left: `${(start / duration) * 100}%`,
+                        width: `${((finish - start) / duration) * 100}%`,
+                      }}
+                    >
+                      <FrameThumb
+                        stillId={beat.stillFileId}
+                        clipId={beat.clipFileId}
+                      />
+                      <span className="nle-clip-label">
+                        {formatClock(start)}
+                      </span>
+                    </div>
+                  );
+                })}
+                {viewRange ? (
+                  <div
+                    className="nle-select"
+                    style={{
+                      left: `${(viewRange.start / duration) * 100}%`,
+                      width: `${((viewRange.end - viewRange.start) / duration) * 100}%`,
+                    }}
+                  />
+                ) : null}
+              </div>
+            </div>
           </div>
 
           {selected ? (
             <div className="beat-detail">
               <div className="kicker-row">
                 <p className="kicker">
-                  Timestamp {formatClock(selected.startSec)}
+                  {viewRange
+                    ? `${formatClock(viewRange.start)} – ${formatClock(viewRange.end)}`
+                    : `Section ${formatClock(selected.startSec)}`}
                 </p>
                 <div className="row-actions">
                   <button
@@ -318,34 +328,44 @@ export function BeatBoard({
                 </div>
               </div>
 
-              <label className="kicker" htmlFor="beat-clock">
-                Start
-              </label>
-              <input
-                id="beat-clock"
-                className="track-label-input"
-                value={formatClock(selected.startSec)}
-                onChange={(event) => {
-                  const match = event.target.value.match(/(\d{1,2}):(\d{2})/);
-                  if (!match) return;
-                  update(selected.id, {
-                    startSec: Number(match[1]) * 60 + Number(match[2]),
-                  });
-                }}
-                aria-label="Timestamp start"
-              />
-
-              <h3>Grade this section</h3>
-              {(["script", "vo", "still", "clip"] as GradeKey[]).map((key) => (
-                <GradeRow
-                  key={key}
-                  label={key === "vo" ? "Voice over" : key}
-                  value={selected.grades[key]}
-                  onChange={(value) =>
-                    persist(gradeBeat(project, selected.id, key, value))
-                  }
+              <div className="nle-times">
+                <label className="kicker" htmlFor="beat-in">
+                  In
+                </label>
+                <input
+                  id="beat-in"
+                  className="track-label-input"
+                  value={formatClock(viewRange?.start ?? selected.startSec)}
+                  onChange={(event) => {
+                    const next = parseClockInput(event.target.value);
+                    if (next == null) return;
+                    setRange({
+                      start: next,
+                      end: viewRange?.end ?? endOf(selected),
+                    });
+                    update(selected.id, { startSec: next });
+                  }}
+                  aria-label="Section in point"
                 />
-              ))}
+                <label className="kicker" htmlFor="beat-out">
+                  Out
+                </label>
+                <input
+                  id="beat-out"
+                  className="track-label-input"
+                  value={formatClock(viewRange?.end ?? endOf(selected))}
+                  onChange={(event) => {
+                    const next = parseClockInput(event.target.value);
+                    if (next == null) return;
+                    setRange({
+                      start: viewRange?.start ?? selected.startSec,
+                      end: next,
+                    });
+                    update(selected.id, { endSec: next });
+                  }}
+                  aria-label="Section out point"
+                />
+              </div>
 
               <div className="kicker-row">
                 <label className="kicker" htmlFor="beat-prompt">

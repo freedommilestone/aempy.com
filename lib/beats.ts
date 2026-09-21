@@ -20,15 +20,146 @@ export function formatClock(seconds: number) {
   return `${minutes}:${String(rest).padStart(2, "0")}`;
 }
 
-export function parseStartSeconds(
-  text: string,
-  index: number,
-  fallback?: number,
-) {
+function toSec(minutes: string, seconds: string) {
+  return Number(minutes) * 60 + Number(seconds);
+}
+
+export function parseClockInput(text: string) {
   const match = text.match(/(\d{1,2}):(\d{2})/);
-  if (match) return Number(match[1]) * 60 + Number(match[2]);
-  if (fallback != null && fallback > 0) return fallback;
-  return fallback === 0 && index === 0 ? 0 : index * 8;
+  if (!match) return null;
+  return toSec(match[1], match[2]);
+}
+
+export function parseTimeRange(text: string) {
+  const range = text.match(
+    /(\d{1,2}):(\d{2})\s*[–\-—]\s*(?:(\d{1,2}):(\d{2})|end)/i,
+  );
+  if (range) {
+    const start = toSec(range[1], range[2]);
+    const end = range[3] ? toSec(range[3], range[4]) : undefined;
+    return { start, end };
+  }
+  const one = text.match(/(\d{1,2}):(\d{2})/);
+  if (!one) return null;
+  return { start: toSec(one[1], one[2]) };
+}
+
+export function endOf(beat: Beat) {
+  return beat.endSec > beat.startSec ? beat.endSec : beat.startSec + 1;
+}
+
+export function timelineDuration(beats: Beat[]) {
+  return Math.max(1, ...beats.map((beat) => endOf(beat)));
+}
+
+export function rulerMarks(duration: number) {
+  const step =
+    duration <= 20 ? 2 : duration <= 60 ? 5 : duration <= 180 ? 15 : 30;
+  const marks: number[] = [];
+  for (let time = 0; time <= duration + 0.001; time += step) {
+    marks.push(Number(time.toFixed(2)));
+  }
+  if (marks[marks.length - 1] < duration) marks.push(duration);
+  return marks;
+}
+
+export function stampBeatTimes(beats: Beat[]): Beat[] {
+  if (!beats.length) return beats;
+  const parsed = beats.map((beat) => {
+    const range = parseTimeRange(`${beat.title}\n${beat.script}`);
+    if (!range) return beat;
+    return {
+      ...beat,
+      startSec: range.start,
+      endSec: range.end && range.end > range.start ? range.end : beat.endSec,
+    };
+  });
+
+  const out: Beat[] = [];
+  let index = 0;
+  let cursor = 0;
+  while (index < parsed.length) {
+    const beat = parsed[index];
+    if (beat.endSec > beat.startSec) {
+      out.push(beat);
+      cursor = Math.max(cursor, beat.endSec);
+      index += 1;
+      continue;
+    }
+    let next = index;
+    while (next < parsed.length && !(parsed[next].endSec > parsed[next].startSec)) {
+      next += 1;
+    }
+    const group = parsed.slice(index, next);
+    if (next < parsed.length && parsed[next].startSec <= cursor) {
+      const timed = parsed[next];
+      const pack = [...group, timed];
+      const weights = pack.map((item) => {
+        const words = (item.script || "").trim().split(/\s+/).filter(Boolean)
+          .length;
+        return Math.max(words, 8);
+      });
+      const totalWeight = weights.reduce((sum, value) => sum + value, 0);
+      const span = Math.max(pack.length, timed.endSec - timed.startSec);
+      let time = timed.startSec;
+      pack.forEach((item, offset) => {
+        const dur = (weights[offset] / totalWeight) * span;
+        out.push({ ...item, startSec: time, endSec: time + dur });
+        time += dur;
+      });
+      cursor = Math.max(cursor, time);
+      index = next + 1;
+      continue;
+    }
+    const weights = group.map((item) => {
+      const words = (item.script || "").trim().split(/\s+/).filter(Boolean).length;
+      return Math.max(words, 8);
+    });
+    const totalWeight = weights.reduce((sum, value) => sum + value, 0);
+    const cap =
+      next < parsed.length
+        ? parsed[next].startSec
+        : cursor + Math.max(8, totalWeight / 2.5);
+    const span = Math.max(group.length, cap - cursor);
+    let time = cursor;
+    group.forEach((item, offset) => {
+      const dur = (weights[offset] / totalWeight) * span;
+      out.push({ ...item, startSec: time, endSec: time + dur });
+      time += dur;
+    });
+    cursor = time;
+    index = next;
+  }
+  return out;
+}
+
+export function beatAtTime(beats: Beat[], seconds: number) {
+  const hit = beats.find(
+    (beat) => seconds >= beat.startSec && seconds < endOf(beat),
+  );
+  if (hit) return hit;
+  return (
+    [...beats].sort((a, b) => {
+      const da = Math.abs((a.startSec + endOf(a)) / 2 - seconds);
+      const db = Math.abs((b.startSec + endOf(b)) / 2 - seconds);
+      return da - db;
+    })[0] ?? null
+  );
+}
+
+export function beatForRange(beats: Beat[], start: number, end: number) {
+  const lo = Math.min(start, end);
+  const hi = Math.max(start, end);
+  let best: Beat | null = null;
+  let overlap = 0;
+  for (const beat of beats) {
+    const amount = Math.min(hi, endOf(beat)) - Math.max(lo, beat.startSec);
+    if (amount > overlap) {
+      overlap = amount;
+      best = beat;
+    }
+  }
+  return best ?? beatAtTime(beats, (lo + hi) / 2);
 }
 
 export function autoRecommendations(beat: Beat) {
@@ -92,6 +223,7 @@ export function emptyBeat(partial?: Partial<Beat>): Beat {
     clipTakes: [],
     grades: {},
     startSec: 0,
+    endSec: 0,
     ...partial,
   };
 }
@@ -121,12 +253,11 @@ export function alignBeats(project: Project): Project {
         prompt: still?.prompt || clip?.prompt || "",
         stillFileId: still?.fileId,
         clipFileId: clip?.fileId,
-        startSec: parseStartSeconds(chunk || still?.beat || "", index),
       });
     });
     return {
       ...project,
-      beats: built,
+      beats: stampBeatTimes(built),
       currentBeatId: project.currentBeatId ?? null,
     };
   }
@@ -141,7 +272,6 @@ export function alignBeats(project: Project): Project {
       clipFileId: beat.clipFileId || clip?.fileId,
       prompt: beat.prompt || still?.prompt || clip?.prompt || "",
       script,
-      startSec: parseStartSeconds(script || still?.beat || "", index, beat.startSec),
       vo: beat.vo || voParts[index] || "",
     };
   });
@@ -158,14 +288,13 @@ export function alignBeats(project: Project): Project {
         prompt: still?.prompt || clip?.prompt || "",
         stillFileId: still?.fileId,
         clipFileId: clip?.fileId,
-        startSec: parseStartSeconds(scriptParts[index] ?? still?.beat ?? "", index),
       }),
     );
   }
 
   return {
     ...project,
-    beats: filled,
+    beats: stampBeatTimes(filled),
     currentBeatId:
       project.currentBeatId && filled.some((beat) => beat.id === project.currentBeatId)
         ? project.currentBeatId
@@ -188,10 +317,12 @@ export function patchBeat(
 }
 
 export function addBeat(project: Project): Project {
-  const last = project.beats.at(-1)?.startSec ?? -8;
+  const last = project.beats.at(-1);
+  const start = last ? endOf(last) : 0;
   const beat = emptyBeat({
     title: `Beat ${String(project.beats.length + 1).padStart(2, "0")}`,
-    startSec: last + 8,
+    startSec: start,
+    endSec: start + Math.max(4, timelineDuration(project.beats) * 0.08),
   });
   return {
     ...project,
@@ -215,13 +346,20 @@ export function explodeBeat(project: Project, beatId: string): Project {
   if (!beat) return project;
   const parts = splitIntoBeats(beat.script);
   if (parts.length < 2) return project;
-  const first = { ...beat, script: parts[0], title: titleFromChunk(parts[0], 0) };
+  const span = Math.max(1, (endOf(beat) - beat.startSec) / parts.length);
+  const first = {
+    ...beat,
+    script: parts[0],
+    title: titleFromChunk(parts[0], 0),
+    endSec: beat.startSec + span,
+  };
   const rest = parts.slice(1).map((script, index) =>
     emptyBeat({
       title: titleFromChunk(script, index + 1),
       script,
       prompt: beat.prompt,
-      startSec: beat.startSec + (index + 1) * 8,
+      startSec: beat.startSec + span * (index + 1),
+      endSec: beat.startSec + span * (index + 2),
     }),
   );
   const index = project.beats.findIndex((item) => item.id === beatId);

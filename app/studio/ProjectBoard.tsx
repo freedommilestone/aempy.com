@@ -97,7 +97,9 @@ export function ProjectBoard({ id }: { id: string }) {
 
   useEffect(() => {
     const found = loadProjects().find((item) => item.id === id) ?? null;
-    setProject(found ? alignBeats(found) : null);
+    const next = found ? alignBeats(found) : null;
+    if (next) upsertProject(next);
+    setProject(next);
     setReady(true);
   }, [id]);
 
