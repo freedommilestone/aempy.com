@@ -234,27 +234,22 @@
 .story-showcase::before { background: linear-gradient(90deg, var(--night), transparent); left: 0; }
 .story-showcase::after { background: linear-gradient(270deg, var(--night), transparent); right: 0; }
 .story-track {
-  cursor: grab;
+  animation: story-loop 64s linear infinite;
   display: flex;
-  outline: none;
-  overflow-x: auto;
-  overflow-y: hidden;
-  overscroll-behavior-x: contain;
-  scrollbar-width: none;
-  width: 100%;
+  gap: 8px;
+  width: max-content;
+  will-change: transform;
 }
-.story-track::-webkit-scrollbar { display: none; }
-.story-track:active { cursor: grabbing; }
-.story-track:focus-visible { outline: 2px solid rgba(155, 121, 255, .8); outline-offset: 4px; }
-.story-sequence { display: flex; flex: none; gap: 8px; padding: 0 24px; }
+.story-sequence { display: flex; flex: none; gap: 8px; }
 
 .story-card {
-  flex: 0 0 clamp(112px, 14vw, 180px);
+  flex: 0 0 168px;
   margin: 0;
-  width: clamp(112px, 14vw, 180px);
+  width: 168px;
 }
 .card-art {
-  aspect-ratio: 88 / 128;
+  height: 224px;
+  width: 168px;
   border-radius: 5px;
   box-shadow: 0 7px 20px rgba(0, 0, 0, .48);
   line-height: 0;
@@ -289,6 +284,10 @@
 }
 .aempy-landing footer span { background: rgba(161, 147, 220, .55); height: 1px; width: 32px; }
 .aempy-landing footer p { color: #d2cedc; font-size: 11px; letter-spacing: .8px; margin: 0; }
+
+@keyframes story-loop { to { transform: translateX(calc(-50% - 4px)); } }
+
+@media (prefers-reduced-motion: reduce) { .story-track { animation: none; } }
 
 @media (max-width: 780px) {
   .aempy-header { height: 62px; padding: 0 20px; }

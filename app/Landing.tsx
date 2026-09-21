@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { FormEvent, useState } from "react";
 
 const stories = [
   ["Fantasy", "fantasy"],
@@ -25,27 +25,6 @@ const capabilities = [
 export default function Landing() {
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
-  const scrollerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const scroller = scrollerRef.current;
-    if (!scroller) return;
-
-    const onWheel = (event: WheelEvent) => {
-      const max = scroller.scrollWidth - scroller.clientWidth;
-      if (max <= 0) return;
-      const delta = Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY;
-      if (delta === 0) return;
-      const atStart = scroller.scrollLeft <= 0 && delta < 0;
-      const atEnd = scroller.scrollLeft >= max - 1 && delta > 0;
-      if (atStart || atEnd) return;
-      event.preventDefault();
-      scroller.scrollLeft += delta;
-    };
-
-    scroller.addEventListener("wheel", onWheel, { passive: false });
-    return () => scroller.removeEventListener("wheel", onWheel);
-  }, []);
 
   function joinWaitlist(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -130,8 +109,18 @@ export default function Landing() {
       </section>
 
       <section className="story-showcase" id="coming-soon" aria-label="Possible Aempy story styles">
-        <div className="story-track" ref={scrollerRef} tabIndex={0}>
+        <div className="story-track">
           <div className="story-sequence">
+            {stories.map(([name, style]) => (
+              <article className="story-card" key={name}>
+                <div className="card-art">
+                  <img src={`/images/stories/${style}.jpg`} alt="" />
+                </div>
+                <p>{name}</p>
+              </article>
+            ))}
+          </div>
+          <div className="story-sequence" aria-hidden="true">
             {stories.map(([name, style]) => (
               <article className="story-card" key={name}>
                 <div className="card-art">
