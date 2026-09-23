@@ -32,3 +32,7 @@ yarn-error.log*
 # typescript
 next-env.d.ts
 *.tsbuildinfo
+
+# local visual checks
+/tmp/
+.vercel

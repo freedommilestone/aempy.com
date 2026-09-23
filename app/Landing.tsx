@@ -1,234 +1,142 @@
 "use client";
 
 import { FormEvent, useEffect, useRef, useState } from "react";
+import HeroBackdrop from "./HeroBackdrop";
 
 const stories = [
-  ["Fantasy", "fantasy"],
-  ["Sci-Fi", "scifi"],
-  ["Slice of Life", "slice"],
-  ["Action", "action"],
-  ["Cozy", "cozy"],
-  ["Drama", "drama"],
-  ["Adventure", "adventure"],
-  ["Cyberpunk", "cyberpunk"],
-  ["Historical", "historical"],
-  ["Comedy", "comedy"],
+  ["Fantasy", "fantasy"], ["Sci-Fi", "scifi"], ["Slice of Life", "slice"],
+  ["Action", "action"], ["Cozy", "cozy"], ["Drama", "drama"],
+  ["Adventure", "adventure"], ["Cyberpunk", "cyberpunk"],
+  ["Historical", "historical"], ["Comedy", "comedy"],
 ] as const;
 
-const iconProps = {
-  width: 36,
-  height: 36,
-  viewBox: "0 0 36 36",
-  fill: "none",
-  stroke: "currentColor",
-  strokeWidth: 1.6,
-  strokeLinecap: "round" as const,
-  strokeLinejoin: "round" as const,
-  "aria-hidden": true,
-};
+function Arrow({ left = false }: { left?: boolean }) {
+  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d={left ? "m14 5-7 7 7 7M7 12h14" : "m10 5 7 7-7 7M17 12H3"} strokeLinecap="round" strokeLinejoin="round" /></svg>;
+}
 
-const capabilities = [
-  {
-    name: "Develop Your Story",
-    icon: (
-      <svg {...iconProps}>
-        <rect x="1.2" y="1.2" width="33.6" height="33.6" rx="8" />
-        <path d="M18 9.2a5.3 5.3 0 0 0-3.1 9.5c.5.4.8 1 .8 1.6v.9h4.6v-.9c0-.6.3-1.2.8-1.6A5.3 5.3 0 0 0 18 9.2Z" />
-        <path d="M15.7 23.4h4.6M16.3 25.6h3.4" />
-      </svg>
-    ),
-  },
-  {
-    name: "Visualize Your World",
-    icon: (
-      <svg {...iconProps}>
-        <rect x="1.2" y="1.2" width="33.6" height="33.6" rx="8" />
-        <rect x="9" y="10.5" width="18" height="15" rx="2" />
-        <circle cx="13.2" cy="14.6" r="1.3" />
-        <path d="m10.2 23.2 5.1-4.4 3.3 2.8 2.2-1.8 5 3.4" />
-      </svg>
-    ),
-  },
-  {
-    name: "Generate & Animate",
-    icon: (
-      <svg {...iconProps}>
-        <rect x="1.2" y="1.2" width="33.6" height="33.6" rx="8" />
-        <circle cx="18" cy="18" r="6.2" />
-        <path d="M16.4 15.2v5.6l4.6-2.8-4.6-2.8Z" fill="currentColor" stroke="none" />
-      </svg>
-    ),
-  },
-  {
-    name: "Edit and Polish",
-    icon: (
-      <svg {...iconProps}>
-        <rect x="1.2" y="1.2" width="33.6" height="33.6" rx="8" />
-        <path d="M11 14.2h14M11 21.8h14" />
-        <circle cx="15.2" cy="14.2" r="2.1" fill="#030b19" />
-        <circle cx="21.4" cy="21.8" r="2.1" fill="#030b19" />
-      </svg>
-    ),
-  },
-];
+function CapabilityIcon({ type }: { type: number }) {
+  return <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    {type === 0 && <><path d="M16 33c0-7-7-9-7-18a15 15 0 0 1 30 0c0 9-7 11-7 18l-3 3H19Z" transform="translate(0 3) scale(1 .85)"/><path d="M18 35h12M19 40h10M22 44h4"/></>}
+    {type === 1 && <><rect x="4" y="5" width="40" height="37" rx="3"/><circle cx="15" cy="15" r="2"/><circle cx="33" cy="14" r="1.4"/><path d="m5 34 12-13 11 12 6-7 9 10"/></>}
+    {type === 2 && <><circle cx="24" cy="24" r="20"/><path d="m20 15 13 9-13 9Z"/></>}
+    {type === 3 && <><path d="M3 13h17m12 0h13M3 34h15m12 0h15M3 24h8"/><circle cx="26" cy="13" r="6"/><circle cx="24" cy="34" r="6"/></>}
+  </svg>;
+}
 
 export default function Landing() {
   const [email, setEmail] = useState("");
-  const [submitted, setSubmitted] = useState(false);
+  const [previewMessage, setPreviewMessage] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const trackRef = useRef<HTMLDivElement>(null);
-  const sequenceRef = useRef<HTMLDivElement>(null);
+  const emailRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const track = trackRef.current;
-    const sequence = sequenceRef.current;
-    if (!track || !sequence) return;
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-
-    let offset = 0;
-    let last = performance.now();
+    if (!track) return;
     let frame = 0;
-    const speed = 32;
-
-    const tick = (now: number) => {
-      const gap = Number.parseFloat(getComputedStyle(track).columnGap) || 0;
-      const loop = sequence.offsetWidth + gap;
-      const delta = Math.min(32, now - last);
-      last = now;
-      if (loop > gap) offset = (offset + (speed * delta) / 1000) % loop;
-      track.style.transform = `translate3d(${-offset}px, 0, 0)`;
-      frame = requestAnimationFrame(tick);
+    const update = () => {
+      const bounds = track.getBoundingClientRect();
+      track.querySelectorAll<HTMLElement>(".story-card").forEach(card => {
+        const box = card.getBoundingClientRect();
+        const distance = Math.max(-1, Math.min(1, (box.left + box.width / 2 - bounds.left - bounds.width / 2) / (bounds.width / 2)));
+        card.style.setProperty("--lift", `${-36 * distance * distance}px`);
+        card.style.setProperty("--turn", `${-12 * distance}deg`);
+        card.style.setProperty("--extra-height", `${34 * distance * distance}px`);
+      });
     };
-
-    frame = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frame);
+    const schedule = () => { cancelAnimationFrame(frame); frame = requestAnimationFrame(update); };
+    const observer = new ResizeObserver(schedule);
+    observer.observe(track);
+    track.addEventListener("scroll", schedule, { passive: true });
+    update();
+    return () => { observer.disconnect(); track.removeEventListener("scroll", schedule); cancelAnimationFrame(frame); };
   }, []);
+
+  function moveCarousel(direction: number) {
+    const track = trackRef.current;
+    if (!track) return;
+    const max = track.scrollWidth - track.clientWidth;
+    let next = track.scrollLeft + direction * Math.max(280, track.clientWidth * .55);
+    if (direction > 0 && track.scrollLeft >= max - 2) next = 0;
+    if (direction < 0 && track.scrollLeft <= 2) next = max;
+    track.scrollTo({ left: next, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" });
+  }
 
   function joinWaitlist(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (email.trim()) setSubmitted(true);
+    setPreviewMessage(true);
+  }
+
+  function focusWaitlist() {
+    setMenuOpen(false);
+    emailRef.current?.focus({ preventScroll: true });
   }
 
   return (
-    <main className="aempy-landing">
-      <div className="ambient-stars" aria-hidden="true" />
-      <header className="aempy-header">
-        <a className="aempy-brand" href="/" aria-label="Aempy home">
-          <svg className="aempy-mark" viewBox="0 0 32 32" aria-hidden="true">
+    <main className="aempy-landing" id="home">
+      <a className="skip-link" href="#about">Skip to content</a>
+      <HeroBackdrop />
+      <header className="aempy-header page-width">
+        <a className="aempy-brand" href="#home" aria-label="Aempy home">
+          <svg className="aempy-mark" viewBox="0 0 48 52" fill="none" aria-hidden="true">
             <defs>
-              <linearGradient id="aempy-logo" x1="4" y1="30" x2="28" y2="2" gradientUnits="userSpaceOnUse">
-                <stop stopColor="#6d46ff" />
-                <stop offset="1" stopColor="#4d9dff" />
-              </linearGradient>
+              <linearGradient id="logo-left" x1="9" y1="45" x2="29" y2="8" gradientUnits="userSpaceOnUse"><stop stopColor="#6234f5"/><stop offset=".55" stopColor="#8e73ff"/><stop offset="1" stopColor="#74baff"/></linearGradient>
+              <linearGradient id="logo-right" x1="23" y1="10" x2="39" y2="45" gradientUnits="userSpaceOnUse"><stop stopColor="#668cff"/><stop offset=".55" stopColor="#5134b5"/><stop offset="1" stopColor="#9362ff"/></linearGradient>
             </defs>
-            <path fill="url(#aempy-logo)" d="M16 2.4 29.2 29h-6.1l-2.5-5.4H11.4L8.9 29H2.8L16 2.4Zm0 10.2-3.1 6.8h6.2L16 12.6Z" />
+            <path d="m8 44 16-34" stroke="url(#logo-left)" strokeWidth="12" strokeLinecap="round"/>
+            <path d="m24 10 16 34" stroke="url(#logo-right)" strokeWidth="12" strokeLinecap="round"/>
+            <path d="m13 35 15 5" stroke="#7757ee" strokeWidth="10" strokeLinecap="round"/>
+            <path d="m8 44 5-9" stroke="#5934e6" strokeWidth="11" strokeLinecap="round"/>
           </svg>
           <span>Aempy</span>
         </a>
-        <nav aria-label="Primary navigation">
-          <a className="active" href="/">Home</a>
-          <a href="#about">About</a>
-          <a href="#coming-soon">Coming Soon</a>
+        <nav className={menuOpen ? "main-nav is-open" : "main-nav"} id="primary-navigation" aria-label="Primary navigation">
+          <a className="active" href="#home" onClick={() => setMenuOpen(false)}>Home</a>
+          <a href="#about" onClick={() => setMenuOpen(false)}>About</a>
+          <a href="#coming-soon" onClick={() => setMenuOpen(false)}>Coming Soon</a>
         </nav>
-        <a className="header-cta" href="#waitlist">Join Waitlist</a>
+        <div className="header-actions">
+          <a className="button header-cta" href="#waitlist" onClick={focusWaitlist}>Join Waitlist</a>
+          <button className="menu-toggle" type="button" aria-label={menuOpen ? "Close menu" : "Open menu"} aria-expanded={menuOpen} aria-controls="primary-navigation" onClick={() => setMenuOpen(!menuOpen)}><span/><span/></button>
+        </div>
       </header>
 
-      <section className="aempy-hero" id="about">
+      <section className="aempy-hero page-width" id="about" aria-labelledby="hero-title">
         <div className="hero-copy">
           <p className="eyebrow">AI STUDIO FOR STORYTELLERS</p>
-          <h1>
-            Turn Your Ideas<br />
-            <span>Into <em>Animated Worlds.</em></span>
-          </h1>
-          <p className="hero-description">
-            Aempy will help you develop, visualize, and create original anime,
-            animated stories, and more — with AI that understands story,
-            characters, and cinematic direction.
-          </p>
+          <h1 id="hero-title">Turn Your Ideas<br/><span>Into <em>Animated Worlds.</em></span></h1>
+          <p className="hero-description">Aempy will help you develop, visualize, and create original anime, animated stories, and more — with AI that understands story, characters, and cinematic direction.</p>
           <p className="prompt-note">No prompt expertise required.</p>
-
           <form className="waitlist-form" id="waitlist" onSubmit={joinWaitlist}>
-            {submitted ? (
-              <p className="form-success" role="status">
-                You’re on the list. We’ll let you know when Aempy is ready.
-              </p>
-            ) : (
-              <>
-                <label className="email-field">
-                  <span aria-hidden="true">✉</span>
-                  <input
-                    type="email"
-                    required
-                    value={email}
-                    onChange={(event) => setEmail(event.target.value)}
-                    placeholder="Enter your email"
-                    aria-label="Email address"
-                  />
-                </label>
-                <button type="submit">Join Waitlist <span>→</span></button>
-              </>
-            )}
+            <label className="email-field">
+              <svg viewBox="0 0 28 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><rect x="2" y="3" width="24" height="18" rx="2"/><path d="m3 5 11 9L25 5"/></svg>
+              <input ref={emailRef} type="email" required autoComplete="email" value={email} onChange={event => { setEmail(event.target.value); setPreviewMessage(false); }} placeholder="Enter your email" aria-label="Email address" aria-describedby="waitlist-note"/>
+            </label>
+            <button className="button" type="submit">Join Waitlist <Arrow/></button>
           </form>
-          {!submitted && (
-            <p className="privacy-note">
-              Be the first to know when we launch. No spam, just updates.
-            </p>
-          )}
+          <p className="privacy-note" id="waitlist-note">{previewMessage ? "Email registration isn’t open yet. Your address hasn’t been saved." : "Be the first to know when we launch. No spam, just updates."}</p>
+          <p className="preview-note" role="status">{previewMessage ? "Waitlist registration will be available when we launch." : "Email signup opens soon."}</p>
         </div>
-
-        <div
-          className="hero-world"
-          role="img"
-          aria-label="A creator and companion overlooking a fantastical city at sunset"
-        >
-          <p className="hero-script">Same<br />Stories.<br />Bigger<br />Worlds.</p>
-        </div>
+        <p className="hero-script" aria-label="Same stories. Bigger worlds.">Same<br/><span>Stories.</span><br/>Bigger<br/><span>Worlds.</span></p>
       </section>
 
       <section className="capability-row" aria-label="Aempy capabilities">
-        {capabilities.map((capability) => (
-          <div className="capability" key={capability.name}>
-            <span className="capability-icon">{capability.icon}</span>
-            <p>{capability.name.replace(" ", "\n")}</p>
-          </div>
-        ))}
+        {[["Develop", "Your Story"], ["Visualize", "Your World"], ["Generate", "& Animate"], ["Edit", "and Polish"]].map(([first, second], index) => <div className="capability" key={first}><CapabilityIcon type={index}/><p>{first}<br/>{second}</p></div>)}
       </section>
 
-      <section className="story-showcase" id="coming-soon" aria-label="Possible Aempy story styles">
-        <div className="story-track" ref={trackRef}>
-          <div className="story-sequence" ref={sequenceRef}>
-            {stories.map(([name, style]) => (
-              <article className="story-card" key={name}>
-                <div className="card-art">
-                  <img src={`/images/stories/${style}.jpg`} alt="" />
-                </div>
-                <p>{name}</p>
-                <div className="card-reflection" aria-hidden="true">
-                  <img src={`/images/stories/${style}.jpg`} alt="" />
-                </div>
-              </article>
-            ))}
-          </div>
-          <div className="story-sequence" aria-hidden="true">
-            {stories.map(([name, style]) => (
-              <article className="story-card" key={name}>
-                <div className="card-art">
-                  <img src={`/images/stories/${style}.jpg`} alt="" />
-                </div>
-                <p>{name}</p>
-                <div className="card-reflection" aria-hidden="true">
-                  <img src={`/images/stories/${style}.jpg`} alt="" />
-                </div>
-              </article>
-            ))}
-          </div>
+      <section className="story-showcase" id="coming-soon" aria-label="Explore story genres">
+        <div className="story-track" ref={trackRef} tabIndex={0} role="region" aria-label="Story genres. Use left and right arrow keys to explore." onKeyDown={event => { if (event.key === "ArrowRight" || event.key === "ArrowLeft") { event.preventDefault(); moveCarousel(event.key === "ArrowRight" ? 1 : -1); } }}>
+          {[...stories, ...stories].map(([name, style], index) => <figure className="story-card" key={`${style}-${index}`} aria-hidden={index >= stories.length ? true : undefined}>
+            <div className="card-art"><img src={`/images/generated/${style}.webp`} alt="" width="512" height="768" loading="eager" draggable="false"/></div>
+            <figcaption>{name}</figcaption>
+            <div className="card-reflection" aria-hidden="true"><img src={`/images/generated/${style}.webp`} alt="" width="512" height="768" draggable="false"/></div>
+          </figure>)}
         </div>
+        <button className="carousel-arrow previous" type="button" onClick={() => moveCarousel(-1)} aria-label="Previous genres"><Arrow left/></button>
+        <button className="carousel-arrow next" type="button" onClick={() => moveCarousel(1)} aria-label="Next genres"><Arrow/></button>
       </section>
 
-      <footer>
-        <span />
-        <p>For Dreamers. For Creators. For the Next Generation of Stories.</p>
-        <span />
-      </footer>
+      <footer className="aempy-footer"><span/><p>For Dreamers. For Creators. For the Next Generation of Stories.</p><span/></footer>
     </main>
   );
 }
