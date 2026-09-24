@@ -117,3 +117,15 @@
 
 .import-world-link { background: none; border: 0; padding: 12px 3px 0; color: #bda6e5 !important; font-size: 10px; }
 .import-world-link:hover { text-decoration: underline; }
+.world-project-card { cursor: pointer; }
+.project-title-link { font: inherit !important; color: inherit; border: 0; padding: 0; background: none; text-align: left; }
+.project-title-link:hover { color: #d4b3ff; }
+
+.project-delete-control { margin-top: 24px; padding-top: 18px; border-top: 1px solid #713f5355; }
+.project-delete-control h3 { margin: 0 0 8px; font-size: 16px; color: #ffd2dc; overflow-wrap: anywhere; }
+.project-delete-control p { color: #d6b8c4; font-size: 12px; line-height: 1.65; }
+.project-delete-button { background: #3b152b; border: 1px solid #a85172; color: #ffcedd !important; border-radius: 6px; padding: 11px 16px; font-size: 12px; }
+.project-delete-button:hover { background: #60203c; border-color: #f18dad; }
+.project-delete-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.project-delete-actions .project-secondary { font-size: 12px; min-height: 39px; }
+.pw-settings > .project-delete-control { display: block; }
