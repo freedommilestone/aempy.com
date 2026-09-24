@@ -28,3 +28,9 @@ Visit `/dashboard` for the local studio preview. It includes format/style select
 The studio is protected by a temporary shared access code checked on the server. Successful login at `/login` sets a signed, HTTP-only, eight-hour session cookie and redirects to `/dashboard`. Logout clears the cookie. This is a shared preview gate, not individual user accounts; Supabase authentication will replace it later.
 
 Configure `STUDIO_ACCESS_CODE` and a random `STUDIO_SESSION_SECRET` in `.env.local` for development and in Vercel for production. Never commit either value. Drafts still live only in the current browser, and AI generation is not connected. Sample world content is labeled throughout the UI.
+
+## Projects
+
+The protected `/dashboard/projects` page shares the studio sidebar and logo. New visitors see a first-project welcome screen; saved drafts appear in a searchable library with status tabs, sorting, grid/list views, editable names and covers, and archive/restore. Text and Markdown stories can be imported into local drafts. Opening and saving an existing project updates that draft instead of creating a duplicate. No example projects are added to user storage.
+
+Projects use browser localStorage, not individual accounts or cloud storage. The temporary shared-code session also protects the direct projects route.

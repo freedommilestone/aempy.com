@@ -163,3 +163,5 @@
 .studio-brand small { white-space: nowrap; font-size: 11px; }
 
 .studio-plan .studio-signout { margin: 0 0 12px; border-color: #3a4263; background: #092037; padding: 7px; }
+
+.nav-group button.selected:hover { background: linear-gradient(110deg,#7020fa,#4013cf); }
