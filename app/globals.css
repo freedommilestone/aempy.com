@@ -8,3 +8,7 @@ button { cursor: pointer; }
 button:focus-visible, a:focus-visible, [tabindex]:focus-visible { outline: 2px solid #b7a2ff; outline-offset: 5px; }
 ::selection { color: white; background: #6441ba; }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; } }
+
+/* Preserve wheel, touch and keyboard scrolling without visible scrollbar tracks. */
+html, body, * { scrollbar-width: none !important; }
+*::-webkit-scrollbar { display: none; width: 0; height: 0; }

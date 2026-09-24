@@ -20,3 +20,11 @@ The homepage includes responsive navigation, a keyboard- and touch-accessible ge
 The hero uses the original still artwork with a darker overlay behind the text.
 
 Email storage remains deferred; the form does not collect addresses. Production is hosted on Vercel at https://www.aempy.com.
+
+## Studio dashboard
+
+Visit `/dashboard` for the local studio preview. It includes format/style selection, a reference-image preview, example world details, local draft creation and search, and JSON export. Drafts persist under `aempy-drafts` in browser localStorage; uploaded reference images remain session-only and are not transmitted.
+
+The studio is protected by a temporary shared access code checked on the server. Successful login at `/login` sets a signed, HTTP-only, eight-hour session cookie and redirects to `/dashboard`. Logout clears the cookie. This is a shared preview gate, not individual user accounts; Supabase authentication will replace it later.
+
+Configure `STUDIO_ACCESS_CODE` and a random `STUDIO_SESSION_SECRET` in `.env.local` for development and in Vercel for production. Never commit either value. Drafts still live only in the current browser, and AI generation is not connected. Sample world content is labeled throughout the UI.

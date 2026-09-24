@@ -1,0 +1,23 @@
+.access-page { min-height: 100svh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 24px; position: relative; isolation: isolate; background: #020b15; }
+.access-page::before { content: ""; position: absolute; z-index: -1; inset: 0; background: linear-gradient(90deg,#020b15e8,#020b1599),linear-gradient(0deg,#020b15,transparent 65%),url('/images/generated/hero.webp') center / cover; }
+.access-brand { display: flex; align-items: center; gap: 12px; font-size: 28px; font-weight: 600; text-decoration: none; margin-bottom: 28px; }
+.access-brand svg { width: 41px; height: 46px; }
+.access-card { width: 100%; max-width: 460px; background: #041827e8; border: 1px solid #344469; box-shadow: 0 20px 70px #0005; border-radius: 15px; padding: 36px; backdrop-filter: blur(14px); }
+.access-eyebrow { color: #c6a8fa; letter-spacing: 2.4px; font-size: 10px; margin: 0 0 18px; }
+.access-card h1 { font: 700 43px/1.1 var(--font-display),Georgia,serif; letter-spacing: -1px; margin: 0 0 18px; }
+.access-card h1 em { color: #ab8bf4; font-style: normal; }
+.access-description { font-size: 14px; line-height: 1.65; color: #bdc9de; margin: 0 0 25px; }
+.access-form label { display: block; font-size: 12px; margin-bottom: 10px; color: #ddd5ee; }
+.access-form input { display: block; width: 100%; background: #10273a; border: 1px solid #415879; border-radius: 7px; padding: 15px; color: white; outline: 0; font-size: 17px; letter-spacing: 2px; }
+.access-form input:focus { border-color: #a784fa; box-shadow: 0 0 0 3px #9872ff22; }
+.access-form input::placeholder { font-size: 14px; letter-spacing: 0; color: #9cacc5; }
+.access-error { color: #f6b8c8; font-size: 12px; line-height: 1.5; min-height: 18px; margin: 9px 0 12px; }
+.access-form button { width: 100%; display: flex; justify-content: center; gap: 20px; align-items: center; padding: 15px; border: 1px solid #9865ff88; border-radius: 7px; color: white; background: linear-gradient(115deg,#7634f9,#4d20e3); font-size: 16px; }
+.access-form button:hover { filter: brightness(1.12); }
+.access-form button:disabled { opacity: .55; cursor: wait; }
+.access-form button span { font-size: 23px; line-height: 1; }
+.access-note { font-size: 10px; color: #a9b8d0; text-align: center; margin: 13px 0 24px; }
+.access-back { display: block; color: #c0aedf; text-align: center; font-size: 12px; text-decoration: none; }
+.access-back:hover { color: white; }
+.access-footer { font: italic 16px Georgia,serif; color: #c4b5df; margin: 25px 0 0; }
+@media(max-width: 480px) { .access-page { padding: 28px 16px; } .access-card { padding: 29px 24px; } .access-card h1 { font-size: 37px; } }
