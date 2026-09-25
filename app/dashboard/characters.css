@@ -1,5 +1,4 @@
 .characters-workspace .pw-banner { height: 310px; background-image: linear-gradient(90deg,#000d1870,transparent 55%,#000d1833),linear-gradient(0deg,#000d18,transparent 60%),url('/images/characters/sunset-header.png') !important; background-position: center 52%; }
-.characters-workspace .pw-project-nav button.selected { background: linear-gradient(110deg,#7020fa,#4013cf); }
 .characters-workspace .studio-breadcrumb > a { max-width: 235px; overflow: hidden; text-overflow: ellipsis; text-decoration: none; }
 .characters-workspace .studio-search { width: 300px; }
 .characters-hero { min-height: 190px; padding: 29px 30px 22px; position: relative; }

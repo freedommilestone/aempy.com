@@ -3,9 +3,9 @@
 import ProjectsView from "./ProjectsView";
 import { projectStatuses, projectArt, type Draft } from "./project-types";
 import "./projects.css";
-import { Icon, Logo } from "./StudioBrand";
+import StudioSidebar, { studioGroups, projectSections, sectionHash, rememberProject } from "./StudioSidebar";
+import { Icon } from "./StudioBrand";
 import { useRouter } from "next/navigation";
-import { logout } from "../login/actions";
 import { ChangeEvent, useEffect, useRef, useState } from "react";
 
 const art = (name: string) => `/images/generated/${name}.webp`;
@@ -29,12 +29,6 @@ const styles = [
 ];
 const extraStyles = [["Neon Noir", "Electric, atmospheric worlds", "cyberpunk"], ["Watercolor", "Soft and expressive", "historical"]];
 const stages = ["Understanding your idea…", "Identifying genre and tone…", "Exploring the story concept…", "Previewing characters…", "Discovering locations…", "Organizing lore and factions…", "Mapping relationships…", "Outlining episodes and scenes…", "Preparing your draft…"];
-const navigation = [
-  { label: "", items: ["Home", "Create", "Projects", "Story Bible"] },
-  { label: "BUILD", items: ["Characters", "Locations", "Relationships", "Factions", "Lore", "Timeline"] },
-  { label: "PRODUCTION", items: ["Storyboard", "Production", "Edit", "Export"] },
-  { label: "LIBRARY", items: ["Assets", "Templates", "Community"] },
-];
 type Detail = { title: string; description: string; image?: string };
 
 export default function Dashboard({ initialSection = "Create" }: { initialSection?: string }) {
@@ -64,10 +58,12 @@ export default function Dashboard({ initialSection = "Create" }: { initialSectio
     try { const value = JSON.parse(localStorage.getItem("aempy-drafts") || "[]"); if (Array.isArray(value)) setDrafts(value.filter(d => d && typeof d.id === "string" && typeof d.title === "string" && typeof d.idea === "string" && typeof d.format === "string" && typeof d.style === "string" && typeof d.createdAt === "string").map(d => ({...d, status: projectStatuses.includes(d.status) ? d.status : "Draft", cover: projectArt.includes(d.cover) ? d.cover : "fantasy", tags: Array.isArray(d.tags) ? d.tags.filter((t: unknown) => typeof t === "string") : [], episodes: typeof d.episodes === "number" && Number.isFinite(d.episodes) ? Math.max(0, Math.floor(d.episodes)) : 0, updatedAt: typeof d.updatedAt === "string" ? d.updatedAt : d.createdAt}))); } catch { /* Start with an empty workspace if storage is unavailable. */ }
     setLoaded(true);
     const shortcut = (event: KeyboardEvent) => { if ((event.metaKey || event.ctrlKey) && event.key === "k") { event.preventDefault(); search.current?.focus(); } };
-    const handleBack = () => setSection(window.location.pathname.endsWith("/projects") ? "Projects" : "Create");
+    const handleBack = () => setSection(window.location.pathname.endsWith("/projects") ? "Projects" : [...studioGroups.flatMap(g=>g.items),...projectSections,"Templates"].find(name=>sectionHash(name)===window.location.hash.slice(1)) || "Create");
+    handleBack();
+    window.addEventListener("hashchange",handleBack);
     window.addEventListener("popstate", handleBack);
     window.addEventListener("keydown", shortcut);
-    return () => { window.removeEventListener("popstate", handleBack); window.removeEventListener("keydown", shortcut); if (buildTimer.current) clearInterval(buildTimer.current); };
+    return () => { window.removeEventListener("hashchange",handleBack);window.removeEventListener("popstate", handleBack); window.removeEventListener("keydown", shortcut); if (buildTimer.current) clearInterval(buildTimer.current); };
   }, []);
 
   useEffect(() => {
@@ -76,16 +72,24 @@ export default function Dashboard({ initialSection = "Create" }: { initialSectio
   }, [detail]);
   useEffect(() => () => { if (reference) URL.revokeObjectURL(reference); }, [reference]);
 
+  useEffect(() => {
+    if (loaded && projectSections.includes(section) && section !== "Assets") navigate(section);
+  }, [loaded, section, drafts]);
+
   function navigate(next: string) {
-    const path = next === "Projects" ? "/dashboard/projects" : "/dashboard";
-    if (window.location.pathname !== path) window.history.pushState(null, "", path);
+    if (projectSections.includes(next) && next !== "Assets") {
+      // A global link cannot silently choose an IP on the creator's behalf.
+      next = "Projects";
+    }
+    const path = next === "Projects" ? "/dashboard/projects" : next === "Create" ? "/dashboard" : `/dashboard#${sectionHash(next)}`;
+    if (window.location.pathname + window.location.hash !== path) window.history.pushState(null, "", path);
     setSection(next); setMenuOpen(false); setQuery("");
   }
   function persistProjects(next: Draft[]) {
     try { localStorage.setItem("aempy-drafts", JSON.stringify(next)); setDrafts(next);setMessage(""); return true; }
     catch { return false; }
   }
-  function openProject(draft: Draft) { router.push(`/dashboard/projects/${encodeURIComponent(draft.id)}`); }
+  function openProject(draft: Draft) { rememberProject(draft.id);router.push(`/dashboard/projects/${encodeURIComponent(draft.id)}`); }
   function newProject() { setEditingId(null);setIdea("");setFormat("Animated Series");setStyle("Anime");setReference(null);setBuilt(false);setStep(0);setMessage("");navigate("Create"); }
 
   function show(title: string, description: string, image?: string) { setDetail({ title, description, image }); }
@@ -100,7 +104,7 @@ export default function Dashboard({ initialSection = "Create" }: { initialSectio
         buildTimer.current = null;
         const existing = drafts.find(d => d.id === editingId);
         const draft: Draft = { ...existing, id: existing?.id || crypto.randomUUID(), title: existing?.title || idea.trim().split(/[.!?]/)[0].split(/\s+/).slice(0,8).join(" "), idea: idea.trim(), format, style, createdAt: existing?.createdAt || new Date().toISOString(), updatedAt: new Date().toISOString(), status: existing?.status || "Draft", cover: existing?.cover || "fantasy" };
-        setEditingId(draft.id);
+        setEditingId(draft.id);rememberProject(draft.id);
         const next = existing ? drafts.map(d => d.id === existing.id ? draft : d) : [draft, ...drafts]; setDrafts(next);
         try { localStorage.setItem("aempy-drafts", JSON.stringify(next)); setMessage("Draft saved in this browser. AI generation is not connected yet."); }
         catch { setMessage("Draft created for this session. Browser storage is unavailable; export it to keep a copy."); }
@@ -123,12 +127,7 @@ export default function Dashboard({ initialSection = "Create" }: { initialSectio
   const allStyles = moreStyles ? [...styles, ...extraStyles] : styles;
 
   return <div className={`studio ${section === "Projects" ? "projects-studio" : ""}`}>
-    {menuOpen && <button className="studio-scrim" aria-label="Close navigation" onClick={() => setMenuOpen(false)}/>}
-    <aside className={`studio-sidebar ${menuOpen ? "open" : ""}`}>
-      <Logo/>
-      <nav aria-label="Studio navigation">{navigation.map(group => <div className="nav-group" key={group.label}>{group.label && <p>{group.label}</p>}{group.items.map(item => item === "Home" ? <a href="/" key={item}><Icon name={item}/><span>{item}</span></a> : <button key={item} className={section === item ? "selected" : ""} aria-current={section === item ? "page" : undefined} onClick={() => navigate(item)}><Icon name={item}/><span>{item}</span>{item === "Projects" && drafts.length > 0 && <small>{drafts.length}</small>}</button>)}</div>)}</nav>
-      <div className="studio-plan"><form action={logout}><button className="studio-signout" type="submit">Log out <Icon name="Export" size={14}/></button></form><div><Icon name="Check" size={21}/><span>Your creative space</span></div><p>Local preview · No credits used</p><button onClick={() => show("Your Aempy account", "This is a local dashboard preview. Individual accounts, plans, and billing have not been connected. Your story drafts are saved only in this browser.")}>Explore Creator Plan <Icon name="Arrow" size={16}/></button></div>
-    </aside>
+    <StudioSidebar section={section} open={menuOpen} onClose={()=>setMenuOpen(false)} onNavigate={navigate} projects={drafts}/>
     <div className="studio-main">
       <div className="studio-banner" aria-hidden="true"/>
       <header className="studio-topbar">

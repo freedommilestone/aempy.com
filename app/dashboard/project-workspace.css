@@ -1,13 +1,5 @@
 .project-workspace { background: #000d17; }
 .pw-banner { position: absolute; inset: 0 0 auto; height: 325px; z-index: -1; background-size: cover; background-position: center 40%; }
-.pw-global-nav { padding: 10px 0 19px; border-bottom: 1px solid #113448; }
-.pw-global-nav > a,.pw-global-nav > button { margin-bottom: 5px; }
-.pw-project-nav > p { margin-top: 20px; }
-.pw-project-nav .pw-current-project { padding: 0; gap: 10px; border: 1px solid #174563; background: #001321; overflow: hidden; margin-bottom: 9px; }
-.pw-current-project img { width: 46px; height: 39px; object-fit: cover; flex-shrink: 0; }
-.pw-current-project span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-right: 5px; }
-.pw-project-nav button { min-height: 38px; padding-block: 8px; }
-.pw-project-nav .selected { background: linear-gradient(100deg,#4220ba,#171f51); border-color: #463576; }
 .pw-crumb-title { color: #dcacff; max-width: 260px; overflow: hidden; text-overflow: ellipsis; }
 .pw-hero { display: flex; align-items: flex-start; justify-content: space-between; gap: 25px; min-height: 209px; padding: 48px 30px 25px; }
 .pw-hero > div { min-width: 0; }
@@ -94,3 +86,10 @@
 @media(max-width:1000px) { .pw-columns { grid-template-columns: 1fr; } .pw-right { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); } .pw-right > :first-child { grid-column: 1/-1; } .pw-world-gallery { height: 145px; } .pw-actions { grid-template-columns: repeat(4,minmax(0,1fr)); } .pw-crumb-title { max-width: 140px; } .pw-hero { padding-top: 30px; } .pw-stats button { grid-template-columns: 30px 1fr; } .pw-stats svg { grid-row: 1/3; } }
 @media(max-width:760px) { .pw-hero { padding: 26px 17px 18px; flex-direction: column; gap: 14px; } .pw-hero h1 { font-size: 36px; } .pw-description { font-size: 13px; } .pw-hero .project-secondary { margin: 0; } .pw-meta { font-size: 10px; } .pw-content { padding: 17px 14px 25px; } .pw-tabs { padding-inline: 18px; gap: 25px; } .pw-tabs button { font-size: 11px; } .pw-banner { height: 360px; background-position: 60% center; } .pw-crumb-title { max-width: 95px; } .project-workspace .studio-tools { gap: 8px; } .project-workspace .studio-breadcrumb { gap: 6px; min-width: 0; } .project-workspace .studio-breadcrumb > svg { display: none; } .pw-right { display: flex; } .pw-entry img { width: 85px; } .pw-settings,.pw-bible,.pw-full-activity,.pw-search-results { padding: 17px; } }
 @media(max-width:540px) { .pw-actions { grid-template-columns: repeat(2,minmax(0,1fr)); } .pw-stats { padding-inline: 2px; } .pw-stats button { grid-template-columns: 1fr; } .pw-stats svg { grid-row: auto; } .pw-stats strong { font-size: 20px; } .pw-stats span { font-size: 8px; } .project-workspace .studio-topbar { gap: 8px; padding-inline: 10px; } .pw-crumb-title { display: none; } .project-workspace .studio-search { width: 140px; } .pw-entry { display: grid; grid-template-columns: 76px 1fr auto; gap: 4px 9px; padding: 0 9px 0 0; } .pw-entry img,.compact .pw-entry img { grid-row: span 2; width: 76px; height: 79px; } .pw-entry-copy { padding-top: 8px; } .pw-entry .pw-state { grid-column: 2; justify-self: start; margin-bottom: 8px; } .pw-entry-more { grid-column: 3; grid-row: 1/3; } .pw-section-heading > .project-primary { padding-inline: 10px; font-size: 10px; } }
+.pw-bible-context { display:flex; align-items:center; justify-content:space-between; gap:18px; padding:14px; margin-bottom:18px; border:1px solid #24415e; border-radius:7px; background:#082030; font-size:12px; line-height:1.7; color:#c9d5e8; }
+.pw-bible-context button { flex-shrink:0; font-size:12px; }
+@media(max-width:650px){.pw-bible-context{flex-direction:column;align-items:flex-start}}
+.project-workspace .studio-breadcrumb { min-width:0; flex:1; }
+.project-workspace .studio-breadcrumb > a { min-width:0; overflow:hidden; text-overflow:ellipsis; }
+.project-workspace .studio-tools { flex-shrink:0; }
+@media(min-width:761px) and (max-width:1050px){.project-workspace .studio-search{width:160px}.project-workspace .studio-breadcrumb{gap:7px}.project-workspace .studio-topbar{gap:12px}}
